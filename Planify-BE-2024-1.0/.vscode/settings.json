@@ -1,0 +1,9 @@
+{
+  "java.configuration.updateBuildConfiguration": "automatic",
+  "git.ignoreLimitWarning": true,
+  "java.debug.settings.onBuildFailureProceed": true,
+  "sonarlint.connectedMode.project": {
+    "connectionId": "conexion BE",
+    "projectKey": "2024-g02-PLANIFY-Backend"
+  }
+}

@@ -1,0 +1,83 @@
+[
+    {
+      "mail": "admin@admin.com",
+      "name": "David",
+      "surnames": "Ortega",
+      "centro": "ETSII",
+      "internal": true,
+      "password": "Contraseña3*"
+    },
+    {
+      "mail": "ana.martinez2@example.com",
+      "name": "Ana",
+      "surnames": "Martínez",
+      "centro": "ETSIA",
+      "internal": false,
+      "password": "y&6JhF3s"
+    },
+    {
+      "mail": "juan.perez3@example.com",
+      "name": "Juan",
+      "surnames": "Pérez",
+      "centro": "ETSIIT",
+      "internal": true,
+      "password": "z#2KlGq9"
+    },
+    {
+      "mail": "lucia.gomez4@example.com",
+      "name": "Lucía",
+      "surnames": "Gómez",
+      "centro": "ETSINF",
+      "internal": false,
+      "password": "1^MbXw9v"
+    },
+    {
+      "mail": "maria.lopez5@example.com",
+      "name": "María",
+      "surnames": "López",
+      "centro": "ETSEA",
+      "internal": true,
+      "password": "4*LkPw1z"
+    },
+    {
+      "mail": "pedro.garcia6@example.com",
+      "name": "Pedro",
+      "surnames": "García",
+      "centro": "ETSIME",
+      "internal": false,
+      "password": "5+GhTr4n"
+    },
+    {
+      "mail": "carmen.sanchez7@example.com",
+      "name": "Carmen",
+      "surnames": "Sánchez",
+      "centro": "ETSETB",
+      "internal": true,
+      "password": "p*9KjD1s"
+    },
+    {
+      "mail": "jose.ruiz8@example.com",
+      "name": "José",
+      "surnames": "Ruiz",
+      "centro": "ETSAE",
+      "internal": false,
+      "password": "m#2DfGl7"
+    },
+    {
+      "mail": "raquel.diaz9@example.com",
+      "name": "Raquel",
+      "surnames": "Díaz",
+      "centro": "ETSCCP",
+      "internal": true,
+      "password": "g&8HtXk3"
+    },
+    {
+      "mail": "alberto.navarro10@example.com",
+      "name": "Alberto",
+      "surnames": "Navarro",
+      "centro": "ETSAM",
+      "internal": false,
+      "password": "b*4QlRm8"
+    }
+  ]
+  

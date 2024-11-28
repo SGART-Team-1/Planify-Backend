@@ -1,0 +1,40 @@
+# Pipeline para construir y desplegar una aplicación Spring Boot en Azure DevOps.
+
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  name: local_agent
+
+stages:
+- stage: Build
+  jobs:
+    - job: Build
+      displayName: "Compilar el proyecto"
+      steps:
+        # Configurar Maven
+        - script: |
+            mvn -version
+            mvn clean install
+          displayName: "Compilar con Maven "
+
+        - script: mvn clean test jacoco:report
+          displayName: "Ejecutar pruebas"
+
+- stage: Install_SonarQube_Scanner
+  jobs:
+  - job:
+    steps:
+    - checkout: none
+    - script: npm install -g sonar-scanner
+    - script: echo Install SonarQube Scanner ok!
+
+- stage: Sonar_scanner 
+  jobs:
+  - job:
+    steps:
+    - checkout: none
+    - script: sonar-scanner -D sonar.token=$(SQ_TOKEN) -D project.settings=./sonar.properties
+    - script: echo Sonar scanner ok!
