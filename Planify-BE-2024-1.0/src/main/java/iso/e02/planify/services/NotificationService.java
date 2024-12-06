@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
-public class NotificationService {
+public class NotificationService {  
 
     @Autowired
     private NotificationRepository notificationRepository;
@@ -28,18 +28,25 @@ public class NotificationService {
     /**
      * Crea una notificación cuando se invita a un usuario a una reunión.
      */
-    public void createMeetingInvitationNotification(Long meetingId, Long userId) {
+    public void createMeetingInvitationNotification(Long meetingId, Long userId, CommonUser authenticatedUser) {
+        // Obtener reunión
         Meeting meeting = meetingRepository.findById(meetingId)
-            .orElseThrow(() -> new IllegalArgumentException("Reunión no encontrada"));
-        CommonUser user = (CommonUser) usersRepository.findById(userId)
-            .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
-
-        String description = user.getName() + " te ha invitado a la reunión '" + meeting.getSubject() + "'";
+                .orElseThrow(() -> new IllegalArgumentException("Reunión no encontrada"));
+    
+        // Obtener usuario invitado
+        CommonUser invitedUser = (CommonUser) usersRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+    
+        // Crear mensaje usando el nombre del usuario autenticado
+        String description = authenticatedUser.getName() + " te ha invitado a la reunión '" + meeting.getSubject() + "'";
+    
+        // Crear la notificación
         Notification notification = new Notification();
-        notification.setUser(user);
+        notification.setUser(invitedUser); // Guardar el destinatario (usuario invitado)
         notification.setMeeting(meeting);
         notification.setDescription(description);
-
+    
+        // Guardar en la base de datos
         notificationRepository.save(notification);
     }
 
