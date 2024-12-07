@@ -7,6 +7,7 @@ import iso.e02.planify.repositories.NotificationRepository;
 import iso.e02.planify.repositories.MeetingRespository;
 import iso.e02.planify.repositories.UsersRepository;
 import iso.e02.planify.entities.MeetingAttendance;
+import iso.e02.planify.entities.MeetingAttendance.InvitationStatus;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -55,43 +56,39 @@ public class NotificationService {
      */
     public void createResponseNotification(Long meetingId, Long userId, boolean accepted, String reason) {
         Meeting meeting = meetingRepository.findById(meetingId)
-            .orElseThrow(() -> new IllegalArgumentException("Reunión no encontrada"));
-        CommonUser user = (CommonUser) usersRepository.findById(userId)
-            .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Meeting not found"));
 
-        String description = user.getName() +
-                (accepted
-                        ? " ha aceptado tu invitación a la reunión '" + meeting.getSubject() + "'"
-                        : " ha rechazado tu invitación a la reunión '" + meeting.getSubject() + "' por el motivo '" + reason + "'");
+        CommonUser user = (CommonUser) usersRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        String description = accepted
+                ? user.getName() + " ha aceptado tu invitación a la reunión " + meeting.getSubject()
+                : user.getName() + " ha rechazado tu invitación a la reunión " 
+                    + meeting.getSubject() + " por motivo " + reason;
 
         Notification notification = new Notification();
         notification.setUser(user);
         notification.setMeeting(meeting);
         notification.setDescription(description);
-
         notificationRepository.save(notification);
     }
 
-    /**
-     * Crea notificaciones cuando se cancela una reunión.
-     */
-    public void createCancellationNotifications(Long meetingId) {
+    // Notificaciones de cancelación
+    public void createCancellationNotifications(Long meetingId, CommonUser organizer) {
         Meeting meeting = meetingRepository.findById(meetingId)
-            .orElseThrow(() -> new IllegalArgumentException("Reunión no encontrada"));
+                .orElseThrow(() -> new IllegalArgumentException("Meeting not found"));
 
-        meeting.getParticipants().stream()
-            .filter(attendance -> attendance.getInvitationStatus() == MeetingAttendance.InvitationStatus.ACEPTADA)
-            .forEach(attendance -> {
-                CommonUser user = attendance.getUser();
-                String description = "La reunión '" + meeting.getSubject() + "' ha sido cancelada por el organizador.";
+        List<MeetingAttendance> acceptedParticipants = meeting.getParticipants().stream()
+                .filter(attendance -> attendance.getInvitationStatus() == InvitationStatus.ACEPTADA)
+                .toList();
 
-                Notification notification = new Notification();
-                notification.setUser(user);
-                notification.setMeeting(meeting);
-                notification.setDescription(description);
-
-                notificationRepository.save(notification);
-            });
+        for (MeetingAttendance attendance : acceptedParticipants) {
+            Notification notification = new Notification();
+            notification.setUser(attendance.getUser());
+            notification.setMeeting(meeting);
+            notification.setDescription(organizer.getName() + " ha cancelado la reunión " + meeting.getSubject() + " que habías aceptado.");
+            notificationRepository.save(notification);
+        }
     }
 
     /**

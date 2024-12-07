@@ -66,8 +66,8 @@ public class NotificationController {
     public ResponseEntity<Void> createCancellationNotifications(
             @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable Long meetingId) {
-        Long userId = jwtService.getCommonUserFromJWT(authorizationHeader).getId();
-        notificationService.createCancellationNotifications(meetingId);
+        CommonUser organizer = jwtService.getCommonUserFromJWT(authorizationHeader);
+        notificationService.createCancellationNotifications(meetingId, organizer);
         return ResponseEntity.ok().build();
     }
 }
