@@ -1,2 +1,4 @@
 target/
 .scannerwork/
+.DS_store
+.vscode
