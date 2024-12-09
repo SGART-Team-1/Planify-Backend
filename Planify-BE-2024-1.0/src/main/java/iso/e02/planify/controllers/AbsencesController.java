@@ -9,6 +9,7 @@ import iso.e02.planify.services.ValidateAbsenceService;
 import iso.e02.planify.services.JWTService;
 import iso.e02.planify.services.ManageUsersService;
 
+import java.util.ArrayList;
 // imports de java
 import java.util.List;
 
@@ -76,13 +77,18 @@ public class AbsencesController {
 	 * @param absenceInfo el objeto de solicitud que contiene los datos de la ausencia.
 	 */
 	@PostMapping("/create")
-	public void create(@RequestBody CreateAbsenceRequest absenceInfo) {
+	public ResponseEntity<?> create(@RequestBody CreateAbsenceRequest absenceInfo) {
 		this.validateAbsenceService.validateAbsenceInfo(absenceInfo); // validación de la información de la ausencia
+		
+		 List<String> messages = new ArrayList<>();
 		if (absenceInfo.hasOverlapsMeeting()) { //si la ausencia se superpone con reuniones
-			this.manageUsersService.cancelOrRejectMeetingsAbsence(absenceInfo); //se gestionará en el servicio de ausencias
-		} //si la ausencia se superpone con otras ausencias, se gestionará en
+			messages = this.manageUsersService.cancelOrRejectMeetingsAbsenceInfo(absenceInfo); //se gestionará en el servicio de ausencias
+		}
+		
 		Absence absence = this.validateAbsenceService.toAbsence(absenceInfo); // conversión de la información a un objeto de ausencia
 		this.absencesService.create(absence); // creación de la ausencia en la base de datos
+		
+		return ResponseEntity.ok(messages);
 	}
 
 	/**
