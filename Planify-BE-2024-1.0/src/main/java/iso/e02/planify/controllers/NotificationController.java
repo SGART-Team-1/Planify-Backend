@@ -6,6 +6,7 @@ import iso.e02.planify.requests.InvitationNotificationRequest;
 import iso.e02.planify.requests.ResponseNotificationRequest;
 import iso.e02.planify.services.NotificationService;
 import iso.e02.planify.services.JWTService;
+import iso.e02.planify.requests.NotificationDTO;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -15,7 +16,8 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/notifications")
+@RequestMapping("notifications")
+@CrossOrigin("*")
 public class NotificationController {
 
     @Autowired
@@ -26,10 +28,10 @@ public class NotificationController {
 
     // Obtener notificaciones de un usuario autenticado
     @GetMapping("/user")
-    public ResponseEntity<List<Notification>> getUserNotifications(
+    public ResponseEntity<List<NotificationDTO>> getUserNotifications(
             @RequestHeader("Authorization") String authorizationHeader) {
         Long userId = jwtService.getCommonUserFromJWT(authorizationHeader).getId();
-        List<Notification> notifications = notificationService.getNotificationsForUser(userId);
+        List<NotificationDTO> notifications = notificationService.getNotificationsForUser(userId);
         return ResponseEntity.ok(notifications);
     }
 
