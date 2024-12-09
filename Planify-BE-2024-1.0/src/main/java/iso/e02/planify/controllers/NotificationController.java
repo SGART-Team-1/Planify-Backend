@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/notifications")
@@ -30,5 +31,19 @@ public class NotificationController {
         Long userId = jwtService.getCommonUserFromJWT(authorizationHeader).getId();
         List<Notification> notifications = notificationService.getNotificationsForUser(userId);
         return ResponseEntity.ok(notifications);
+    }
+
+        // Marcar notificación como leída
+    @PatchMapping("/{notificationId}/read")
+    public ResponseEntity<Void> markNotificationAsRead(@PathVariable UUID notificationId) {
+        notificationService.markAsRead(notificationId);
+        return ResponseEntity.ok().build();
+    }
+
+    // Descartar (eliminar lógicamente) una notificación
+    @PatchMapping("/{notificationId}/discard")
+    public ResponseEntity<Void> discardNotification(@PathVariable UUID notificationId) {
+        notificationService.discard(notificationId);
+        return ResponseEntity.ok().build();
     }
 }

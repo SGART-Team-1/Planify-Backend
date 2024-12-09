@@ -12,7 +12,9 @@ import iso.e02.planify.entities.MeetingAttendance.InvitationStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class NotificationService {
@@ -129,5 +131,23 @@ public class NotificationService {
      */
     public List<Notification> getNotificationsForUser(Long userId) {
         return notificationRepository.findByUser(userId);
+    }
+
+        // Marcar como leída
+    public void markAsRead(UUID notificationId) {
+        Notification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new IllegalArgumentException("Notification not found"));
+
+        notification.setReadingDate(LocalDateTime.now());
+        notificationRepository.save(notification);
+    }
+
+    // Descartar (cambiar estado a 1)
+    public void discard(UUID notificationId) {
+        Notification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new IllegalArgumentException("Notification not found"));
+
+        notification.setState(true); // Cambiar el estado a activo para eliminación
+        notificationRepository.save(notification);
     }
 }
