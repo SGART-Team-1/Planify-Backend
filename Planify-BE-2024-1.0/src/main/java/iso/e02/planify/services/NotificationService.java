@@ -6,6 +6,7 @@ import iso.e02.planify.entities.CommonUser;
 import iso.e02.planify.repositories.NotificationRepository;
 import iso.e02.planify.repositories.MeetingRespository;
 import iso.e02.planify.repositories.UsersRepository;
+import iso.e02.planify.requests.NotificationDTO;
 import iso.e02.planify.entities.MeetingAttendance;
 import iso.e02.planify.entities.MeetingAttendance.InvitationStatus;
 
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class NotificationService {
@@ -129,25 +131,31 @@ public class NotificationService {
     /**
      * Recupera todas las notificaciones de un usuario.
      */
-    public List<Notification> getNotificationsForUser(Long userId) {
-        return notificationRepository.findByUser(userId);
+    public List<NotificationDTO> getNotificationsForUser(Long userId) {
+        // Filtrar notificaciones por usuario y convertir a DTO
+        return notificationRepository.findByUserId(userId)
+                .stream()
+                .map(notification -> new NotificationDTO(
+                        notification.getNotificationId(),
+                        notification.getDescription(),
+                        notification.getReadingDate()
+                ))
+                .collect(Collectors.toList());
     }
 
-        // Marcar como leída
     public void markAsRead(UUID notificationId) {
+        // Buscar notificación y marcar como leída
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new IllegalArgumentException("Notification not found"));
-
         notification.setReadingDate(LocalDateTime.now());
         notificationRepository.save(notification);
     }
 
-    // Descartar (cambiar estado a 1)
     public void discard(UUID notificationId) {
+        // Cambiar estado de la notificación a descartada
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new IllegalArgumentException("Notification not found"));
-
-        notification.setState(true); // Cambiar el estado a activo para eliminación
+        notification.setState(true);
         notificationRepository.save(notification);
     }
 }
