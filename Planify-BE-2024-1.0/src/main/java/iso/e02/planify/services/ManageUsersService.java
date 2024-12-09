@@ -12,6 +12,7 @@ import iso.e02.planify.requests.CreateAbsenceRequest;
 // imports de java
 import java.util.Optional;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -253,6 +254,7 @@ public class ManageUsersService {
         }
     }
     
+    //ORIGINAL 
     public void cancelOrRejectMeetingsAbsence(CreateAbsenceRequest absenceInfo){
         LocalDateTime fromDateTime;
         LocalDateTime toDateTime;
@@ -277,4 +279,39 @@ public class ManageUsersService {
             }
         }
     }
+    
+    //NUEVO CON INFO
+    public List<String> cancelOrRejectMeetingsAbsenceInfo(CreateAbsenceRequest absenceInfo) {
+        List<String> results = new ArrayList<>();
+        LocalDateTime fromDateTime;
+        LocalDateTime toDateTime;
+
+        if (absenceInfo.isAllDayLong()) {
+            fromDateTime = LocalDateTime.parse(absenceInfo.getFromDate() + "T00:00");
+            toDateTime = LocalDateTime.parse(absenceInfo.getToDate() + "T23:59");
+        } else {
+            fromDateTime = LocalDateTime.parse(absenceInfo.getFromDate() + "T" + absenceInfo.getFromTime());
+            toDateTime = LocalDateTime.parse(absenceInfo.getToDate() + "T" + absenceInfo.getToTime());
+        }
+
+        List<MeetingAttendance> meetings = meetingAttendanceRepository.findAttendancesByUserIdAndPeriod(
+            fromDateTime, toDateTime, absenceInfo.getUserId(), absenceInfo.isAllDayLong()
+        );
+
+        for (MeetingAttendance meetingAttendance : meetings) {
+            Meeting meeting = meetingAttendance.getMeeting();
+            if (meetingAttendance.getRole() == MeetingAttendance.Role.ORGANIZADOR) {
+                meeting.setStatus(Meeting.Status.CANCELADA);
+                meetingRepository.save(meeting);
+                results.add("Se ha cancelado la reunión: " + meeting.getSubject());
+            } else {
+                meetingAttendance.setInvitationStatus(MeetingAttendance.InvitationStatus.RECHAZADA);
+                meetingAttendance.setDeclineReason("Ausencia programada");
+                meetingAttendanceRepository.save(meetingAttendance);
+                results.add("Se ha rechazado la reunión: " + meeting.getSubject());
+            }
+        }
+        return results;
+    }
+
 }
