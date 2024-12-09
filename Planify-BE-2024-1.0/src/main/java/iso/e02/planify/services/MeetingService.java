@@ -38,13 +38,16 @@ public class MeetingService {
     @Autowired
     private ManageUsersService manageUsersService;
 
-    public List<Map<String,Object>> listAll(Long userId) {
+    @Autowired
+    private NotificationService notificationService;
+
+    public List<Map<String, Object>> listAll(Long userId) {
         return meetingAttendanceRepository.findAllByUserId(userId);
     }
 
     public Meeting getMeeting(Long meetingId) {
         Optional<Meeting> meetingOptional = meetingRepository.findById(meetingId);
-        if(meetingOptional.isEmpty()) {
+        if (meetingOptional.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Reunión no encontrada");
         }
         return meetingOptional.get();
@@ -68,9 +71,9 @@ public class MeetingService {
 
     @Transactional
     public void create(Meeting meeting, CommonUser organizer, List<String> participantsEmails) {
-
         List<MeetingAttendance> participants = new ArrayList<>();
-
+    
+        // Crear la asistencia del organizador
         MeetingAttendance organizerAttendance = new MeetingAttendance();
         organizerAttendance.setUser(organizer);
         organizerAttendance.setMeeting(meeting);
@@ -79,9 +82,9 @@ public class MeetingService {
         organizerAttendance.setAssisted(false);
         organizerAttendance.setDeclineReason(null);
         participants.add(organizerAttendance);
-
-        for (String participantEmail : participantsEmails) { // poner id si se quiere, depende de como se haga el front
-
+    
+        // Crear asistencias para los demás participantes
+        for (String participantEmail : participantsEmails) {
             MeetingAttendance participantAttendance = new MeetingAttendance();
             participantAttendance.setUser(this.manageUsersService.getUserByEmail(participantEmail));
             participantAttendance.setMeeting(meeting);
@@ -91,11 +94,21 @@ public class MeetingService {
             participantAttendance.setDeclineReason(null);
             participants.add(participantAttendance);
         }
-
+    
         meeting.setParticipants(participants);
         meetingRepository.save(meeting);
+    
+        // Crear notificaciones para los asistentes (excluyendo al organizador)
+        for (MeetingAttendance participant : participants) {
+            if (!participant.getRole().equals(MeetingAttendance.Role.ORGANIZADOR)) {
+                notificationService.createMeetingInvitationNotification(
+                        meeting.getId(),
+                        participant.getUser().getId(),
+                        organizer);
+            }
+        }
     }
-
+    
     @Transactional
     public void editMeeting(Meeting updatedMeeting, Long meetingId, CommonUser organizer, List<String> participants) {
 
@@ -105,8 +118,9 @@ public class MeetingService {
         List<InspectUserForMeetingsDTO> existingParticipantsList = getMeetingAttendances(meetingId);
 
         // Conservar los participantes que ya estaban
-        for(InspectUserForMeetingsDTO existingParticipant: existingParticipantsList) {
-            if(participants.contains(existingParticipant.getEmail()) || organizer.getEmail().equals(existingParticipant.getEmail())) {
+        for (InspectUserForMeetingsDTO existingParticipant : existingParticipantsList) {
+            if (participants.contains(existingParticipant.getEmail())
+                    || organizer.getEmail().equals(existingParticipant.getEmail())) {
                 MeetingAttendance attendance = getMeetingAttendance(meetingId, existingParticipant.getId());
                 newParticipants.add(attendance); // Aunque estuviera, se añade a la nueva lista de participantes
                 participants.remove(existingParticipant.getEmail()); // Y se elimina para no tenerlos en cuenta de nuevo
@@ -114,7 +128,7 @@ public class MeetingService {
         }
 
         // Añadir los participantes que no estaban
-        for(String newParticipantEmail: participants) {
+        for (String newParticipantEmail : participants) {
             CommonUser participant = this.manageUsersService.getUserByEmail(newParticipantEmail);
 
             MeetingAttendance attendance = new MeetingAttendance();
@@ -140,6 +154,8 @@ public class MeetingService {
         MeetingAttendance attendance = getMeetingAttendance(meeting.getId(), user.getId());
         attendance.setAssisted(true);
         meetingAttendanceRepository.save(attendance);
+        // Usar NotificationService para crear la notificación
+        notificationService.createAssistanceNotification(attendance.getMeeting(), user);
     }
 
     @Transactional
@@ -149,7 +165,6 @@ public class MeetingService {
         return attendance.hasAssisted();
     }
 
-
     @Transactional
     public InvitationStatus hasAccepted(CommonUser user, Long meetingId) {
         Meeting meeting = getMeeting(meetingId);
@@ -158,97 +173,114 @@ public class MeetingService {
     }
 
     @Transactional
-    public void changeStatus(Long meetingId, String status) {
+    public void changeStatus(Long meetingId, String status, CommonUser organizer) {
         Meeting meeting = getMeeting(meetingId);
-        meeting.setStatus(Status.valueOf(status));
-        meetingRepository.save(meeting);
+    
+        // Si el estado es CANCELADA, manejamos la notificación de cancelación
+        if ("CANCELADA".equalsIgnoreCase(status)) {
+            // Eliminar la reunión si se desea (o mantenerla como cancelada según la lógica actual)
+            meeting.setStatus(Meeting.Status.CANCELADA);
+            meetingRepository.save(meeting);
+    
+            // Crear notificaciones para los asistentes que habían aceptado
+            notificationService.createCancellationNotifications(meetingId, organizer);
+        } else {
+            meeting.setStatus(Meeting.Status.valueOf(status));
+            meetingRepository.save(meeting);
+        }
     }
+    
 
     @Transactional
-    public void changeInvitationStatus(MeetingAttendance changedMeetingAttendance) {
+    public void changeInvitationStatus(MeetingAttendance changedMeetingAttendance, CommonUser user) {
         meetingAttendanceRepository.save(changedMeetingAttendance);
+        notificationService.createResponseNotification(
+            changedMeetingAttendance.getMeeting().getId(),
+            user.getId(),
+            changedMeetingAttendance.getInvitationStatus(),
+            changedMeetingAttendance.getDeclineReason()
+        );
     }
 
     @Transactional
-public List<CandidateToMeetinDTO> getCandidatesToMeeting(CandidatesRequest request) {
-    LocalDateTime fromDateTimeMeeting = parseDateTime(request.getMeetingDate(), request.getFromDateTime());
-    LocalDateTime toDateTimeMeeting = parseDateTime(request.getMeetingDate(), request.getToDateTime());
-    boolean isAllDay = request.isAllDay();
+    public List<CandidateToMeetinDTO> getCandidatesToMeeting(CandidatesRequest request) {
+        LocalDateTime fromDateTimeMeeting = parseDateTime(request.getMeetingDate(), request.getFromDateTime());
+        LocalDateTime toDateTimeMeeting = parseDateTime(request.getMeetingDate(), request.getToDateTime());
+        boolean isAllDay = request.isAllDay();
 
-    List<CandidateToMeetinDTO> registersObtained = meetingRepository.getCandidatesToMeeting();
-    return filterCandidates(registersObtained, fromDateTimeMeeting, toDateTimeMeeting, isAllDay);
-}
-
-private LocalDateTime parseDateTime(String date, String time) {
-    return LocalDateTime.parse(date + "T" + time);
-}
-
-private List<CandidateToMeetinDTO> filterCandidates(
-        List<CandidateToMeetinDTO> candidates, 
-        LocalDateTime fromDateTimeMeeting, 
-        LocalDateTime toDateTimeMeeting, 
-        boolean isAllDay) {
-    
-    List<CandidateToMeetinDTO> userCandidates = new ArrayList<>();
-    
-    for (CandidateToMeetinDTO candidate : candidates) {
-        boolean hasOverlap = checkOverlap(
-                candidate, fromDateTimeMeeting, toDateTimeMeeting, isAllDay);
-        
-        updateOrAddCandidate(userCandidates, candidate, hasOverlap);
+        List<CandidateToMeetinDTO> registersObtained = meetingRepository.getCandidatesToMeeting();
+        return filterCandidates(registersObtained, fromDateTimeMeeting, toDateTimeMeeting, isAllDay);
     }
-    return userCandidates;
-}
 
-private boolean checkOverlap(
-        CandidateToMeetinDTO candidate, 
-        LocalDateTime fromDateTimeMeeting, 
-        LocalDateTime toDateTimeMeeting, 
-        boolean isAllDay) {
-    
-    boolean hasOverlap = false;
+    private LocalDateTime parseDateTime(String date, String time) {
+        return LocalDateTime.parse(date + "T" + time);
+    }
 
-    if (candidate.getfromDateTimeAbsence() != null && candidate.gettoDateTimeAbsence() != null) {
-        LocalDateTime fromDateRecord = candidate.getfromDateTimeAbsence();
-        LocalDateTime toDateRecord = candidate.gettoDateTimeAbsence();
+    private List<CandidateToMeetinDTO> filterCandidates(
+            List<CandidateToMeetinDTO> candidates,
+            LocalDateTime fromDateTimeMeeting,
+            LocalDateTime toDateTimeMeeting,
+            boolean isAllDay) {
 
-        boolean dateOverlap = !fromDateRecord.toLocalDate().isAfter(fromDateTimeMeeting.toLocalDate()) &&
-                              !toDateRecord.toLocalDate().isBefore(toDateTimeMeeting.toLocalDate());
+        List<CandidateToMeetinDTO> userCandidates = new ArrayList<>();
 
-        if (dateOverlap) {
-            if (isAllDay || 
-                (fromDateRecord.toLocalTime().equals(LocalTime.MIDNIGHT) && 
-                 toDateRecord.toLocalTime().equals(LocalTime.MIDNIGHT))) {
-                hasOverlap = true;
-            } else {
-                hasOverlap = fromDateRecord.toLocalTime().isBefore(toDateTimeMeeting.toLocalTime()) &&
-                             toDateRecord.toLocalTime().isAfter(fromDateTimeMeeting.toLocalTime());
+        for (CandidateToMeetinDTO candidate : candidates) {
+            boolean hasOverlap = checkOverlap(
+                    candidate, fromDateTimeMeeting, toDateTimeMeeting, isAllDay);
+
+            updateOrAddCandidate(userCandidates, candidate, hasOverlap);
+        }
+        return userCandidates;
+    }
+
+    private boolean checkOverlap(
+            CandidateToMeetinDTO candidate,
+            LocalDateTime fromDateTimeMeeting,
+            LocalDateTime toDateTimeMeeting,
+            boolean isAllDay) {
+
+        boolean hasOverlap = false;
+
+        if (candidate.getfromDateTimeAbsence() != null && candidate.gettoDateTimeAbsence() != null) {
+            LocalDateTime fromDateRecord = candidate.getfromDateTimeAbsence();
+            LocalDateTime toDateRecord = candidate.gettoDateTimeAbsence();
+
+            boolean dateOverlap = !fromDateRecord.toLocalDate().isAfter(fromDateTimeMeeting.toLocalDate()) &&
+                    !toDateRecord.toLocalDate().isBefore(toDateTimeMeeting.toLocalDate());
+
+            if (dateOverlap) {
+                if (isAllDay ||
+                        (fromDateRecord.toLocalTime().equals(LocalTime.MIDNIGHT) &&
+                                toDateRecord.toLocalTime().equals(LocalTime.MIDNIGHT))) {
+                    hasOverlap = true;
+                } else {
+                    hasOverlap = fromDateRecord.toLocalTime().isBefore(toDateTimeMeeting.toLocalTime()) &&
+                            toDateRecord.toLocalTime().isAfter(fromDateTimeMeeting.toLocalTime());
+                }
             }
         }
+        return hasOverlap;
     }
-    return hasOverlap;
-}
 
-private void updateOrAddCandidate(
-        List<CandidateToMeetinDTO> userCandidates, 
-        CandidateToMeetinDTO candidate, 
-        boolean hasOverlap) {
-    
-    CandidateToMeetinDTO existingUser = userCandidates.stream()
-            .filter(c -> c.getId().equals(candidate.getId()))
-            .findFirst()
-            .orElse(null);
+    private void updateOrAddCandidate(
+            List<CandidateToMeetinDTO> userCandidates,
+            CandidateToMeetinDTO candidate,
+            boolean hasOverlap) {
 
-    if (existingUser != null) {
-        if (hasOverlap) {
-            existingUser.setHasAbsences(true);
+        CandidateToMeetinDTO existingUser = userCandidates.stream()
+                .filter(c -> c.getId().equals(candidate.getId()))
+                .findFirst()
+                .orElse(null);
+
+        if (existingUser != null) {
+            if (hasOverlap) {
+                existingUser.setHasAbsences(true);
+            }
+        } else {
+            candidate.setHasAbsences(hasOverlap);
+            userCandidates.add(candidate);
         }
-    } else {
-        candidate.setHasAbsences(hasOverlap);
-        userCandidates.add(candidate);
     }
-}
-    
 
     public boolean hasOpenedMeetings(Long userId) {
         return meetingAttendanceRepository.countOpenedMeetings(userId) > 0;
