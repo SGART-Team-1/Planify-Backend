@@ -133,7 +133,7 @@ public class MeetingController {
     public void changeStatus(@RequestHeader("Authorization") String authorizationHeader, @PathVariable Long meetingId, @RequestBody ChangeMeetingStatusRequest statusInfo) {  
         CommonUser user = jwtService.getCommonUserFromJWT(authorizationHeader);
         this.validateMeetingService.validateChangeStatusInfo(user, meetingId, statusInfo.getStatus());
-        this.meetingService.changeStatus(meetingId, statusInfo.getStatus());
+        this.meetingService.changeStatus(meetingId, statusInfo.getStatus(), user);
     }
 
     @PatchMapping("/{meetingId}/changeInvitationStatus")
@@ -145,7 +145,7 @@ public class MeetingController {
         this.validateMeetingService.validateInvitationStatusChangeInfo(user, changeInfo, meetingId);
         MeetingAttendance changedMeetingAttendance = this.validateMeetingService.toMeetingAttendance(meetingId,
                 user, changeInfo);
-        this.meetingService.changeInvitationStatus(changedMeetingAttendance);
+        this.meetingService.changeInvitationStatus(changedMeetingAttendance, user);
     }
 
     @PostMapping("/getCandidatesToMeeting")
