@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CreateAbsenceRequest.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.requests</a> &gt; <span class="el_source">CreateAbsenceRequest.java</span></div><h1>CreateAbsenceRequest.java</h1><pre class="source lang-java linenums">package iso.e02.planify.requests;
+
+/**
+ * Clase que representa una solicitud para crear una nueva ausencia de un usuario.
+ * Contiene la información necesaria para registrar la ausencia, como el tipo, las fechas y horas de inicio y fin, y el identificador del usuario.
+ */
+public class CreateAbsenceRequest {
+
+    /** El tipo de ausencia (Vcaciones, baja, permiso) */
+    private String absenceType;
+
+    private boolean allDayLong;
+
+    /** La fecha de inicio de la ausencia en formato String */
+    private String fromDate;
+
+    /** La hora de inicio de la ausencia en formato String */
+    private String fromTime;
+
+    /** La fecha de fin de la ausencia en formato String */
+    private String toDate;
+
+    /** La hora de fin de la ausencia en formato String */
+    private String toTime;
+
+    /** El identificador del usuario asociado a la ausencia */
+    private long userId;
+
+    private boolean overlapsMeeting;
+
+<span class="fc" id="L31">    public CreateAbsenceRequest(String absenceType, Boolean allDayLong, String fromDate, String fromTime, String toDate, String toTime, long userId, boolean overlapsMeeting) { //para nulos trener en el contstructor solo los required y crear setters?</span>
+<span class="fc" id="L32">        this.absenceType = absenceType;</span>
+<span class="fc" id="L33">        this.allDayLong = allDayLong;</span>
+<span class="fc" id="L34">        this.fromDate = fromDate;</span>
+<span class="fc" id="L35">        this.fromTime = fromTime;</span>
+<span class="fc" id="L36">        this.toDate = toDate;</span>
+<span class="fc" id="L37">        this.toTime = toTime;</span>
+<span class="fc" id="L38">        this.userId = userId;</span>
+<span class="fc" id="L39">        this.overlapsMeeting = overlapsMeeting;</span>
+<span class="fc" id="L40">    }</span>
+
+
+    
+    // Getters y setters
+    
+    /**
+     * Obtiene el identificador del usuario asociado a la ausencia.
+     * 
+     * @return el identificador del usuario.
+     */
+    public long getUserId() {
+<span class="fc" id="L52">        return userId;</span>
+    }
+
+    public void setUserId(long userId) {
+<span class="nc" id="L56">        this.userId = userId;</span>
+<span class="nc" id="L57">    }</span>
+
+    public boolean isAllDayLong() {
+<span class="nc" id="L60">        return allDayLong;</span>
+    }
+
+    public void setAllDayLong(Boolean allDayLong) {
+<span class="nc" id="L64">        this.allDayLong = allDayLong;</span>
+<span class="nc" id="L65">    }</span>
+
+    /**
+     * Obtiene la fecha de inicio de la ausencia.
+     * 
+     * @return la fecha de inicio en formato String.
+     */
+    public String getFromDate() {
+<span class="fc" id="L73">        return fromDate;</span>
+    }
+
+    public void setFromDate(String fromDate) {
+<span class="nc" id="L77">        this.fromDate = fromDate;</span>
+<span class="nc" id="L78">    }</span>
+
+    /**
+     * Obtiene la hora de inicio de la ausencia.
+     * 
+     * @return la hora de inicio en formato String.
+     */
+    public String getFromTime() {
+<span class="fc" id="L86">        return fromTime;</span>
+    }
+
+   
+
+    public void setFromTime(String fromTime) {
+<span class="nc" id="L92">        this.fromTime = fromTime;</span>
+<span class="nc" id="L93">    }</span>
+
+    /**
+     * Obtiene la fecha de fin de la ausencia.
+     * 
+     * @return la fecha de fin en formato String.
+     */
+    public String getToDate() {
+<span class="fc" id="L101">        return toDate;</span>
+    }
+
+    public void setToDate(String toDate) {
+<span class="nc" id="L105">        this.toDate = toDate;</span>
+<span class="nc" id="L106">    }</span>
+
+
+    /**
+     * Obtiene la hora de fin de la ausencia.
+     * 
+     * @return la hora de fin en formato String.
+     */
+    public String getToTime() {
+<span class="fc" id="L115">        return toTime;</span>
+    }
+
+    
+    public void setToTime(String toTime) {
+<span class="nc" id="L120">        this.toTime = toTime;</span>
+<span class="nc" id="L121">    }</span>
+
+    /**
+     * Obtiene el tipo de ausencia.
+     * 
+     * @return el tipo de ausencia.
+     */
+    public String getAbsenceType() {
+<span class="fc" id="L129">        return absenceType;</span>
+    }
+
+    public void setAbsenceType(String absenceType) {
+<span class="nc" id="L133">        this.absenceType = absenceType;</span>
+<span class="nc" id="L134">    }</span>
+
+    public boolean hasOverlapsMeeting() {
+<span class="fc" id="L137">        return overlapsMeeting;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

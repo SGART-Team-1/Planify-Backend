@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UserServiceLogin.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.services</a> &gt; <span class="el_source">UserServiceLogin.java</span></div><h1>UserServiceLogin.java</h1><pre class="source lang-java linenums">package iso.e02.planify.services;
+
+import iso.e02.planify.entities.Administrator;
+// imports de iso.e02.planify
+import iso.e02.planify.entities.AppUser;
+import iso.e02.planify.entities.CommonUser;
+import iso.e02.planify.repositories.AdministratorRepository;
+import iso.e02.planify.repositories.UsersRepository;
+
+import java.util.HashMap;
+// imports de java
+import java.util.Map;
+import java.util.Optional;
+
+// imports de spring
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.server.ResponseStatusException;
+
+// imports de google-authenticator
+import com.warrenstrange.googleauth.GoogleAuthenticator;
+
+// imports de javax.servlet
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+/**
+ * Servicio que gestiona las operaciones de inicio de sesión de los usuarios.
+ * Proporciona funcionalidades para autenticar usuarios y generar tokens de
+ * sesión.
+ */
+@Service
+<span class="fc" id="L36">public class UserServiceLogin {</span>
+
+	@Autowired
+	private UsersRepository userRepository; // Inyección del repositorio de usuarios
+
+	@Autowired
+	private AdministratorRepository adminRepository; // Inyección del repositorio de administradores
+
+	@Autowired
+	private ValidateUserService validateUserService; // Inyección del servicio de validación de usuarios
+
+	@Autowired
+	private ManageUsersService managerUserService; // Inyección del servicio de gestión de usuarios
+
+	@Autowired
+	private JWTService jwtService; // Inyección del servicio de tokens JWT
+
+	@Autowired
+	private IpBlockService ipBlockService; // Inyección del servicio de bloqueo de IPs
+
+<span class="fc" id="L56">	private GoogleAuthenticator gAuth = new GoogleAuthenticator();</span>
+	private static final String ERROR = &quot;Credenciales inválidas o usuario bloqueado/inactivo&quot;;
+
+/**
+ * Intenta autenticar al usuario con las credenciales proporcionadas.
+ * 
+ * @param email       El correo electrónico del usuario que intenta iniciar sesión.
+ * @param password    La contraseña del usuario que intenta iniciar sesión.
+ * @param httpRequest La solicitud HTTP que contiene la dirección IP del cliente.
+ * @return Un mapa que contiene el token de sesión, el rol del usuario y su ID.
+ */
+public Map&lt;String, Object&gt; login(String email, String password, HttpServletRequest httpRequest) {
+<span class="nc" id="L68">    String clientIp = httpRequest.getRemoteAddr(); // Obtiene la dirección IP del cliente</span>
+
+    // Buscar usuario en repositorios
+<span class="nc" id="L71">    AppUser user = findUserByEmail(email).orElseThrow(() -&gt; handleFailedLogin(clientIp));</span>
+
+    // Validar credenciales
+<span class="nc bnc" id="L74" title="All 2 branches missed.">    if (!validatePassword(password, user)) {</span>
+<span class="nc" id="L75">        handleInvalidPassword(user, clientIp);</span>
+    }
+
+    // Verificar estado del usuario
+<span class="nc bnc" id="L79" title="All 2 branches missed.">    if (user instanceof CommonUser) {</span>
+<span class="nc" id="L80">        validateCommonUserState((CommonUser) user, clientIp);</span>
+    }
+
+    // Restablecer intentos fallidos y preparar respuesta
+<span class="nc" id="L84">    ipBlockService.resetAttempts(clientIp); </span>
+<span class="nc" id="L85">    return createLoginResponse(user);</span>
+}
+
+/**
+ * Busca un usuario por correo electrónico en los repositorios disponibles.
+ */
+private Optional&lt;AppUser&gt; findUserByEmail(String email) {
+<span class="nc" id="L92">    return userRepository.findByEmail(email)</span>
+<span class="nc" id="L93">            .or(() -&gt; adminRepository.findByEmail(email));</span>
+}
+
+/**
+ * Maneja un intento fallido de inicio de sesión y lanza una excepción.
+ */
+private RuntimeException handleFailedLogin(String clientIp) {
+<span class="nc" id="L100">    ipBlockService.registerFailedAttempt(clientIp);</span>
+<span class="nc" id="L101">    return new ResponseStatusException(HttpStatus.FORBIDDEN, ERROR);</span>
+}
+
+/**
+ * Valida si la contraseña proporcionada coincide con la almacenada.
+ */
+private boolean validatePassword(String password, AppUser user) {
+<span class="nc" id="L108">    return validateUserService.doHashesMatch(password, user.getCredentials().getPassword());</span>
+}
+
+/**
+ * Maneja un caso de contraseña inválida.
+ */
+private void handleInvalidPassword(AppUser user, String clientIp) {
+<span class="nc bnc" id="L115" title="All 2 branches missed.">    if (user instanceof CommonUser) {</span>
+<span class="nc" id="L116">        handleCommonUserInvalidPassword((CommonUser) user);</span>
+    }
+<span class="nc" id="L118">    ipBlockService.registerFailedAttempt(clientIp);</span>
+<span class="nc" id="L119">    throw new ResponseStatusException(HttpStatus.FORBIDDEN, ERROR);</span>
+}
+
+/**
+ * Maneja el incremento de intentos fallidos para un usuario común.
+ */
+private void handleCommonUserInvalidPassword(CommonUser commonUser) {
+<span class="nc bnc" id="L126" title="All 2 branches missed.">    if (!commonUser.isBlocked()) {</span>
+<span class="nc" id="L127">        commonUser.setLoginAttempts(commonUser.getLoginAttempts() + 1);</span>
+    }
+
+<span class="nc bnc" id="L130" title="All 2 branches missed.">    if (commonUser.getLoginAttempts() &gt;= 5) {</span>
+<span class="nc" id="L131">        managerUserService.blockUser(commonUser.getId());</span>
+<span class="nc" id="L132">        commonUser.setLoginAttempts(0);</span>
+    }
+
+<span class="nc" id="L135">    userRepository.save(commonUser);</span>
+<span class="nc" id="L136">}</span>
+
+/**
+ * Valida el estado de un usuario común.
+ */
+private void validateCommonUserState(CommonUser commonUser, String clientIp) {
+<span class="nc bnc" id="L142" title="All 4 branches missed.">    if (!commonUser.isActivated() || commonUser.isBlocked()) {</span>
+<span class="nc" id="L143">        ipBlockService.registerFailedAttempt(clientIp);</span>
+<span class="nc" id="L144">        throw new ResponseStatusException(HttpStatus.FORBIDDEN, ERROR);</span>
+    }
+<span class="nc" id="L146">    commonUser.setLoginAttempts(0);</span>
+<span class="nc" id="L147">    userRepository.save(commonUser);</span>
+<span class="nc" id="L148">}</span>
+
+/**
+ * Crea la respuesta del inicio de sesión con la información del usuario.
+ */
+private Map&lt;String, Object&gt; createLoginResponse(AppUser user) {
+<span class="nc" id="L154">    Map&lt;String, Object&gt; userObject = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L155">    userObject.put(&quot;id&quot;, user.getId());</span>
+<span class="nc" id="L156">    userObject.put(&quot;role&quot;, user.getType());</span>
+
+<span class="nc bnc" id="L158" title="All 2 branches missed.">    if (user instanceof Administrator) {</span>
+<span class="nc" id="L159">        setHttpHeader(user);</span>
+    }
+
+<span class="nc" id="L162">    return userObject;</span>
+}
+
+	/**
+	 * Verifica la autenticación de dos factores del usuario y, si es correcta,
+	 * devuelve un mapa el rol del usuario y su ID y el JWT en la cabezera
+	 * de autorización.
+	 * 
+	 * @param userId          El ID del usuario que intenta iniciar sesión.
+	 * @param verificationCode El código de verificación de la autenticación de dos factores.
+	 * VerificationCode es el codigo que se introduce de la app de google authenticator
+	 * @return Un mapa que contiene el el rol del usuario y su ID. Y el JWT en la cabezera
+	 * de autorización.
+	 */
+	public void secondFactorValidated(Long userId, int verificationCode) {
+<span class="nc" id="L177">		Optional&lt;AppUser&gt; optAppUser = userRepository.findById(userId) // Buscar al usuario en ambos repositorios</span>
+<span class="nc" id="L178">				.or(() -&gt; adminRepository.findById(userId));</span>
+<span class="nc" id="L179">		String secretKey = optAppUser</span>
+<span class="nc" id="L180">				.orElseThrow(() -&gt; new ResponseStatusException(HttpStatus.NOT_FOUND, &quot;User not found&quot;))</span>
+<span class="nc" id="L181">				.getCredentials().getSecretKey(); // Obtener la clave secreta del usuario</span>
+<span class="nc" id="L182">		boolean isCodeValid = gAuth.authorize(secretKey, verificationCode); // Verificar el código de autenticación</span>
+<span class="nc bnc" id="L183" title="All 2 branches missed.">		if (!isCodeValid) {</span>
+<span class="nc" id="L184">			throw new ResponseStatusException(HttpStatus.FORBIDDEN, &quot;Código de verificación inválido&quot;);</span>
+		}
+<span class="nc" id="L186">		AppUser user = optAppUser.get();</span>
+<span class="nc" id="L187">		setHttpHeader(user);</span>
+<span class="nc" id="L188">	}</span>
+
+	@SuppressWarnings(&quot;null&quot;)
+	public void setHttpHeader(AppUser user) {
+<span class="nc" id="L192">		String jwt = jwtService.generarJWT(user);</span>
+<span class="nc" id="L193">		HttpServletResponse response = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes())</span>
+<span class="nc" id="L194">				.getResponse();</span>
+<span class="nc" id="L195">		response.setHeader( &quot;Authorization&quot;, &quot;Bearer &quot; + jwt);</span>
+<span class="nc" id="L196">		response.setHeader(&quot;Access-Control-Expose-Headers&quot;,&quot;Authorization&quot;);</span>
+<span class="nc" id="L197">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

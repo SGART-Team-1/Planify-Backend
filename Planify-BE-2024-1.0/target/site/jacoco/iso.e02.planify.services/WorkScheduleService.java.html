@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>WorkScheduleService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.services</a> &gt; <span class="el_source">WorkScheduleService.java</span></div><h1>WorkScheduleService.java</h1><pre class="source lang-java linenums">package iso.e02.planify.services;
+
+// imports de iso.e02.planify
+import iso.e02.planify.entities.Schedule;
+import iso.e02.planify.repositories.WorkScheduleRepository;
+
+// imports de java
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+// imports de spring
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+/**
+ * Servicio para la gestión de horarios laborales.
+ * 
+ * Esta clase proporciona métodos para procesar listas de bloques de horarios,
+ * convertirlas en entidades Schedule y almacenarlas en la base de
+ * datos.
+ * También permite recuperar todos los horarios almacenados en el repositorio.
+ */
+@Service
+<span class="fc" id="L31">public class WorkScheduleService {</span>
+    @Autowired
+    private WorkScheduleRepository workScheduleRepository; // Inyección del repositorio de horarios laborales.
+
+<span class="fc" id="L35">    private DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern(&quot;HH:mm&quot;); // Formato de hora    </span>
+
+    private static final String START_HOUR = &quot;startHour&quot;; // Hora de inicio
+    private static final String END_HOUR = &quot;endHour&quot;; // Hora de fin
+
+    /**
+     * Guarda una lista de bloques de horarios en la base de datos.
+     * 
+     * @param blocks una lista de mapas que representan los bloques de horarios a guardar.
+     */
+    public void saveWorkSchedule(List&lt;Map&lt;String, String&gt;&gt; blocks) {
+<span class="nc" id="L46">        List&lt;Schedule&gt; schedules = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L47">        blocks.forEach(block -&gt; schedules.add(toSchedule(block))); // Convierte cada bloque a un objeto Schedule.</span>
+<span class="nc" id="L48">        this.workScheduleRepository.saveAll(schedules); // Guarda los horarios en la base de datos.</span>
+<span class="nc" id="L49">    }</span>
+
+    /**
+     * Valida si la lista de bloques de horarios es válida y no se superponen.
+     * 
+     * @param blocks la lista de bloques de horarios a validar.
+     */
+    public void validateWorkSchedule(List&lt;Map&lt;String, String&gt;&gt; blocks) {
+<span class="nc bnc" id="L57" title="All 2 branches missed.">          if (!getWorkSchedule().isEmpty()) { // validar si la ya existe un horario registrado</span>
+<span class="nc" id="L58">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE, &quot;Ya hay un horario registrado.&quot;);</span>
+        }
+<span class="nc" id="L60">        validateNotNull(blocks, &quot;bloques&quot;); // validar si la lista de bloques no es nula</span>
+<span class="nc" id="L61">        validateBlocks(blocks); // validar si los bloques no se superponen</span>
+<span class="nc" id="L62">    }</span>
+
+    /*
+     * Valida si la lista de bloques de horarios no es nula.
+     * 
+     * @param blocks la lista de bloques de horarios a validar.
+     * @param fieldName el nombre del campo a validar.
+     */
+    public void validateNotNull(List&lt;Map&lt;String, String&gt;&gt; blocks, String fieldName) {
+<span class="nc bnc" id="L71" title="All 4 branches missed.">        if (blocks == null || blocks.isEmpty()) {</span>
+<span class="nc" id="L72">            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,</span>
+            &quot;El campo \&quot;&quot; + fieldName + &quot;\&quot; es obligatorio.&quot;);
+        } 
+<span class="nc" id="L75">    }</span>
+
+    /**
+     * Valida que no sea nulo el nombre de bloque, la hora de inicio y la hora de fin.
+     * Valida que la hora de inicio no sea posterior a la hora de fin y la duración del bloque sea de al menos 2 horas.
+     * Valida que los bloques no se superpongan.
+     * 
+     * @param blocks la lista de bloques de horarios a validar.
+     */
+    public void validateBlocks(List&lt;Map&lt;String, String&gt;&gt; blocks) {
+<span class="nc bnc" id="L85" title="All 2 branches missed.">        for (Map&lt;String, String&gt; block : blocks) {</span>
+<span class="nc" id="L86">            validateBlockNotNull(block.get(&quot;blockName&quot;), &quot;nombre de bloque&quot;);</span>
+<span class="nc" id="L87">            validateBlockNotNull(block.get(START_HOUR), &quot;hora de inicio&quot;);</span>
+<span class="nc" id="L88">            validateBlockNotNull(block.get(END_HOUR), &quot;hora de fin&quot;);</span>
+<span class="nc" id="L89">            isValidTime(block.get(START_HOUR), block.get(END_HOUR)); // validar si las horas son adecuadas</span>
+<span class="nc" id="L90">            checkBlockOverlap(blocks); // validar si los bloques no se superponen</span>
+<span class="nc" id="L91">        }</span>
+<span class="nc" id="L92">    }</span>
+
+    /**
+     * Valida si un campo no es nulo o está vacío.
+     * 
+     * @param field     el campo a validar.
+     * @param fieldName el nombre del campo a validar.
+     */
+    public void validateBlockNotNull(Object field, String fieldName) {
+<span class="nc bnc" id="L101" title="All 4 branches missed.">        if (field == null || </span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">        field instanceof String &amp;&amp; ((String) field).trim().isEmpty()) {</span>
+<span class="nc" id="L103">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;El campo \&quot;&quot; + fieldName + &quot;\&quot; es obligatorio.&quot;);
+        }
+<span class="nc" id="L106">    }</span>
+
+    /**
+     * Valida si la hora de inicio no es posterior a la hora de fin y la duración del bloque es de al menos 2 horas.
+     * 
+     * @param startHourStr la hora de inicio en formato de cadena.
+     * @param endHourStr   la hora de fin en formato de cadena.
+     * @return verdadero si la hora de inicio no es posterior a la hora de fin y la duración del bloque es de al menos 2 horas.
+     */
+    public boolean isValidTime(String startHourStr, String endHourStr) {
+        try {
+<span class="nc" id="L117">            LocalTime fromTime = parseTime(startHourStr);</span>
+<span class="nc" id="L118">            LocalTime toTime = parseTime(endHourStr);</span>
+<span class="nc bnc" id="L119" title="All 2 branches missed.">            if(fromTime.isAfter(toTime)) { // validar si la hora de inicio no es posterior a la hora de fin</span>
+<span class="nc" id="L120">                throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                &quot;La hora de inicio de bloque no puede ser posterior a la hora de fin.&quot;);
+            }
+<span class="nc bnc" id="L123" title="All 2 branches missed.">            if(fromTime.until(toTime, ChronoUnit.HOURS) &lt; 2) { // validar si la duración del bloque es de al menos 2 horas</span>
+<span class="nc" id="L124">                throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                &quot;El bloque de horario debe tener una duración mínima de 2 horas.&quot;);
+            }
+<span class="nc" id="L127">        } catch (DateTimeParseException e) { // validar si la hora tiene un formato válido</span>
+<span class="nc" id="L128">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;La hora no tiene un formato válido. Se esperaba 'HH:mm'.&quot;);
+<span class="nc" id="L130">        }</span>
+<span class="nc" id="L131">        return true;</span>
+    }
+
+     /**
+     * Convierte una cadena en una fecha
+     * 
+     * @param timeStr fecha en formato de cadena
+     * @return objeto LocalTime formateado
+     */
+    public LocalTime parseTime(String timeStr) {
+<span class="nc" id="L141">        return LocalTime.parse(timeStr, this.timeFormat);</span>
+    }
+
+    /**
+     * Valida si los bloques de horario se superponen.
+     * Itera sobre la lista de bloques de horario y verifica si alguno se superpone con otro.
+     * 
+     * @param blocks la lista de bloques de horario a validar.
+     * @return verdadero si los bloques de horario no se superponen.
+     */
+    public boolean checkBlockOverlap (List&lt;Map&lt;String, String&gt;&gt; blocks) {
+<span class="nc bnc" id="L152" title="All 2 branches missed.">        for (int i = 0; i &lt; blocks.size(); i++) {</span>
+<span class="nc bnc" id="L153" title="All 2 branches missed.">            for (int j = i + 1; j &lt; blocks.size(); j++) {</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">                if (isOverlap(blocks.get(i), blocks.get(j))) { // validar si los bloques se superponen</span>
+<span class="nc" id="L155">                    throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;Los bloques de horario no pueden superponerse.&quot;);
+                }
+            }
+        }
+<span class="nc" id="L160">        return true;</span>
+    }
+
+    /**
+     * Valida si dos bloques de horario se superponen.
+     * 
+     * @param block1 el primer bloque de horario.
+     * @param block2 el segundo bloque de horario.
+     * @return verdadero si los bloques de horario se superponen.
+     */
+    public boolean isOverlap(Map&lt;String, String&gt; block1, Map&lt;String, String&gt; block2) {
+<span class="nc" id="L171">        LocalTime start1 = parseTime(block1.get(START_HOUR));</span>
+<span class="nc" id="L172">        LocalTime end1 = parseTime(block1.get(END_HOUR));</span>
+<span class="nc" id="L173">        LocalTime start2 = parseTime(block2.get(START_HOUR));</span>
+<span class="nc" id="L174">        LocalTime end2 = parseTime(block2.get(END_HOUR));</span>
+<span class="nc bnc" id="L175" title="All 4 branches missed.">        return start1.isBefore(end2) &amp;&amp; start2.isBefore(end1);</span>
+    }
+
+    /**
+     * Convierte un bloque de horarios a un objeto Schedule.
+     * 
+     * @param block      el mapa que representa el bloque de horario.
+     * @param indexOfBlock el índice único asignado al horario.
+     * @return un objeto Schedule que representa el bloque de horario.
+     */
+    private Schedule toSchedule(Map&lt;String, String&gt; block) {
+<span class="nc" id="L186">        Schedule schedule = new Schedule();</span>
+<span class="nc" id="L187">        schedule.setBlockName(block.get(&quot;blockName&quot;));</span>
+<span class="nc" id="L188">        schedule.setStartHour(LocalTime.parse(block.get(START_HOUR)));</span>
+<span class="nc" id="L189">        schedule.setEndHour(LocalTime.parse(block.get(END_HOUR)));</span>
+<span class="nc" id="L190">        return schedule;</span>
+    }
+
+    /**
+     * Obtiene todos los horarios almacenados en la base de datos.
+     * 
+     * @return una lista de objetos Schedule que representan los horarios laborales almacenados.
+     */
+    public List&lt;Schedule&gt; getWorkSchedule() {
+<span class="nc" id="L199">        return this.workScheduleRepository.findAll();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

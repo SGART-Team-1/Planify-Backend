@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>WebConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.security</a> &gt; <span class="el_source">WebConfig.java</span></div><h1>WebConfig.java</h1><pre class="source lang-java linenums">package iso.e02.planify.security;
+
+// imports de spring
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+/**
+ * Clase de configuración de Spring que se encarga de configurar el CORS y los interceptores de las peticiones HTTP.
+ * 
+ * Esta clase implementa la interfaz WebMvcConfigurer de Spring, que define métodos para configurar el manejo de las peticiones HTTP.
+ */
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+
+    @Autowired
+    private JWTInterceptor jwtInterceptor; // Inyección del interceptor de JWT
+    
+    @Autowired
+    private IpBlockInterceptor ipBlockInterceptor; // Inyección del interceptor de bloqueo por IP
+    
+    @Override
+    public void addCorsMappings(@SuppressWarnings(&quot;null&quot;) CorsRegistry registry) {
+<span class="fc" id="L26">        registry.addMapping(&quot;/**&quot;)</span>
+<span class="fc" id="L27">                .allowedOrigins(&quot;http://localhost:4200&quot;)  // poner el dominio de la app de angular</span>
+<span class="fc" id="L28">                .allowedMethods(&quot;GET&quot;, &quot;POST&quot;, &quot;DELETE&quot;,&quot;PATCH&quot;, &quot;PUT&quot;, &quot;OPTIONS&quot;)</span>
+<span class="fc" id="L29">                .allowedHeaders(&quot;*&quot;)</span>
+<span class="fc" id="L30">                .exposedHeaders(&quot;Authorization&quot;);</span>
+<span class="fc" id="L31">    }</span>
+    
+    @Autowired
+<span class="fc" id="L34">    public WebConfig(JWTInterceptor jwtInterceptor, IpBlockInterceptor ipBlockInterceptor) {</span>
+<span class="fc" id="L35">        this.jwtInterceptor = jwtInterceptor;</span>
+<span class="fc" id="L36">        this.ipBlockInterceptor = ipBlockInterceptor;</span>
+<span class="fc" id="L37">    }</span>
+
+    @Override
+    public void addInterceptors(@SuppressWarnings(&quot;null&quot;) InterceptorRegistry registry) { // Método para añadir los interceptores
+        
+<span class="fc" id="L42">        registry.addInterceptor(jwtInterceptor) // Añadir las rutas que deben ser interceptadas por el interceptor de JWT</span>
+<span class="fc" id="L43">            .addPathPatterns(&quot;/absences/**&quot;, &quot;/users/**&quot;, &quot;/api/**&quot;, &quot;/workSchedule/**&quot; , &quot;/meetings/**&quot;) </span>
+<span class="fc" id="L44">            .excludePathPatterns(&quot;/users/login&quot;, &quot;/users/register&quot;, &quot;/users/sendRecoveyEmail&quot;, &quot;/users/changePassword&quot; , &quot;/users/*/second-factor-verify/*&quot;);</span>
+<span class="fc" id="L45">        registry.addInterceptor(ipBlockInterceptor) // Añadir las rutas que deben ser interceptadas por el interceptor de bloqueo por IP</span>
+<span class="fc" id="L46">            .addPathPatterns(&quot;/users/login&quot;); </span>
+<span class="fc" id="L47">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

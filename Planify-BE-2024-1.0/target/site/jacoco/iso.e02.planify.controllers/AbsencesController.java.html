@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AbsencesController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.controllers</a> &gt; <span class="el_source">AbsencesController.java</span></div><h1>AbsencesController.java</h1><pre class="source lang-java linenums">package iso.e02.planify.controllers;
+
+// imports de iso.e02.planify
+import iso.e02.planify.entities.Absence;
+import iso.e02.planify.entities.CommonUser;
+import iso.e02.planify.requests.CreateAbsenceRequest;
+import iso.e02.planify.services.AbsencesService;
+import iso.e02.planify.services.ValidateAbsenceService;
+import iso.e02.planify.services.JWTService;
+import iso.e02.planify.services.ManageUsersService;
+
+import java.util.ArrayList;
+// imports de java
+import java.util.List;
+
+// imports de spring
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * Controlador REST para gestionar las ausencias de los usuarios.
+ * 
+ * Permite realizar operaciones CRUD como crear, listar y eliminar
+ * ausencias de los usuarios. Cada método se encarga de una operación específica
+ * y utiliza el servicio de ausencias y validacion de ausencias para gestionar la lógica de negocio.
+ */
+@RestController
+@RequestMapping(&quot;absences&quot;) //ruta base para los puntos de acceso de ausencias
+@CrossOrigin(&quot;*&quot;)
+<span class="fc" id="L40">public class AbsencesController {</span>
+
+	@Autowired
+	private AbsencesService absencesService; // Injección del servicio de ausencias
+
+	@Autowired
+	private ValidateAbsenceService validateAbsenceService; // Servicio de validación de ausencias
+
+	@Autowired
+	private JWTService jwtService;
+
+	@Autowired
+	private ManageUsersService manageUsersService;
+
+	/**
+	 * Comprueba si una ausencia se superpone con reuniones.
+	 * 
+	 * Este método recibe una solicitud con los detalles de la ausencia y
+	 * comprueba si se superpone con otras ausencias del usuario.
+	 * 
+	 * @param absence el objeto de solicitud que contiene los detalles de la ausencia.
+	 * @return true si la ausencia se superpone con otras ausencias, false en caso contrario.
+	 */
+	@PutMapping(&quot;/checkMeetingOverlap&quot;)
+	public ResponseEntity&lt;Boolean&gt; checkMeetingOverlap(@RequestBody CreateAbsenceRequest absenceInfo) {
+<span class="fc" id="L65">		this.validateAbsenceService.validateAbsenceInfo(absenceInfo); //validar la información de la ausencia</span>
+<span class="fc" id="L66">		return ResponseEntity.ok(this.absencesService.checkMeetingOverlap(absenceInfo));</span>
+	}
+
+	/**
+	 * Crea una nueva ausencia para un usuario específico.
+	 * 
+	 * Este método recibe una solicitud con los detalles de la ausencia,
+	 * como las fechas y horas de inicio y fin, si dura toddo el día , el 
+	 * ID del usuario y el tipo de ausencia, y la pasa alservicio de ausencias
+	 * para validarla y guardarla en la base de datos.
+	 * 
+	 * @param absenceInfo el objeto de solicitud que contiene los datos de la ausencia.
+	 */
+	@PostMapping(&quot;/create&quot;)
+	public ResponseEntity&lt;?&gt; create(@RequestBody CreateAbsenceRequest absenceInfo) {
+<span class="fc" id="L81">		this.validateAbsenceService.validateAbsenceInfo(absenceInfo); // validación de la información de la ausencia</span>
+		
+<span class="fc" id="L83">		 List&lt;String&gt; messages = new ArrayList&lt;&gt;();</span>
+<span class="pc bpc" id="L84" title="1 of 2 branches missed.">		if (absenceInfo.hasOverlapsMeeting()) { //si la ausencia se superpone con reuniones</span>
+<span class="nc" id="L85">			messages = this.manageUsersService.cancelOrRejectMeetingsAbsenceInfo(absenceInfo); //se gestionará en el servicio de ausencias</span>
+		}
+		
+<span class="fc" id="L88">		Absence absence = this.validateAbsenceService.toAbsence(absenceInfo); // conversión de la información a un objeto de ausencia</span>
+<span class="fc" id="L89">		this.absencesService.create(absence); // creación de la ausencia en la base de datos</span>
+		
+<span class="fc" id="L91">		return ResponseEntity.ok(messages);</span>
+	}
+
+	/**
+	 * Lista todas las ausencias de un usuario específico.
+	 * 
+	 * Este método devuelve una lista de ausencias asociadas al ID de un usuario.
+	 * Utiliza servicios para validar el acceso permitido y que el usuario exista
+	 * y recupera las ausencias desde la base de datos y las devuelve en una respuesta HTTP.
+	 * Es necesario validar el acceso ya que ambos roles de la aplicación pueden utilizar este método.
+	 * 
+	 * @param id el ID del usuario cuyas ausencias se desean listar.
+	 * @return una respuesta HTTP con una lista de ausencias.
+	 */
+	@GetMapping(&quot;/{id}/list&quot;)
+	public ResponseEntity&lt;List&lt;Absence&gt;&gt; list(@PathVariable Long id) {
+<span class="fc" id="L107">		this.manageUsersService.userExists(id);</span>
+<span class="fc" id="L108">		return ResponseEntity.ok(this.absencesService.list(id));</span>
+	}
+
+	/**
+	 * Lista todas las ausencias asociadas al JWT de un usuario.
+	 * 
+	 * Este método devuelve una lista de ausencias asociadas a un usuario por
+	 * medio del token de sesión JWT.
+	 * 
+	 * @param la cabezera de autorización con el JWT del usuario cuyas ausencias se desean listar.
+	 * @return una respuesta HTTP con una lista de ausencias.
+	 */
+	@GetMapping(&quot;/list&quot;)
+	public ResponseEntity&lt;List&lt;Absence&gt;&gt; listAll(@RequestHeader(&quot;Authorization&quot;) String authorizationHeader) {
+<span class="fc" id="L122">		CommonUser user = jwtService.getCommonUserFromJWT(authorizationHeader); //obtener el usuario desde el JWT</span>
+<span class="fc" id="L123">		return ResponseEntity.ok(this.absencesService.list(user.getId())); //devolver la lista de ausencias</span>
+	}
+
+	/**
+	 * Elimina una ausencia específica de la base de datos.
+	 * 
+	 * Este método elimina una ausencia usando su ID y llama al servicio de
+	 * ausencias
+	 * para realizar la operación en la base de datos.
+	 * 
+	 * @param absenceId el ID de la ausencia a eliminar.
+	 */
+	@DeleteMapping(&quot;/{absenceId}/delete&quot;)
+	public void delete(@PathVariable long absenceId) {
+<span class="fc" id="L137">		this.validateAbsenceService.validateAbsenceExist(absenceId); //validar que la ausencia exista</span>
+<span class="fc" id="L138">		this.absencesService.delete(absenceId); //eliminar la ausencia</span>
+<span class="fc" id="L139">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

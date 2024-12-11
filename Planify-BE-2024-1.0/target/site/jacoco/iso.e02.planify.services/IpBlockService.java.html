@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>IpBlockService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.services</a> &gt; <span class="el_source">IpBlockService.java</span></div><h1>IpBlockService.java</h1><pre class="source lang-java linenums">package iso.e02.planify.services;
+
+import iso.e02.planify.entities.IpAttempt;
+import iso.e02.planify.repositories.IpAttemptRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+/**
+ * Servicio para bloquear direcciones IP después de varios intentos fallidos de inicio de sesión.
+ */
+@Service
+<span class="fc" id="L15">public class IpBlockService {</span>
+
+    private static final int MAX_ATTEMPTS = 5; // Número máximo de intentos antes del bloqueo
+    private static final long BLOCK_TIME_MINUTES = 2; // Duración del bloqueo en minutos
+
+    @Autowired
+    private IpAttemptRepository ipAttemptRepository;
+
+    /**
+     * Verifica si la IP está bloqueada.
+     * 
+     * @param ip Dirección IP a verificar.
+     * @return true si la IP está bloqueada, false en caso contrario.
+     */
+    public boolean isIpBlocked(String ip) {
+<span class="nc" id="L30">        Optional&lt;IpAttempt&gt; ipAttemptOpt = ipAttemptRepository.findByIpAddress(ip);</span>
+
+<span class="nc bnc" id="L32" title="All 2 branches missed.">        if (ipAttemptOpt.isPresent()) {</span>
+<span class="nc" id="L33">            IpAttempt ipAttempt = ipAttemptOpt.get();</span>
+<span class="nc bnc" id="L34" title="All 4 branches missed.">            if (ipAttempt.isBlocked() &amp;&amp; ipAttempt.getLastAttempt().isAfter(LocalDateTime.now().minusMinutes(BLOCK_TIME_MINUTES))) {</span>
+<span class="nc" id="L35">                return true; // La IP está bloqueada dentro del tiempo de bloqueo</span>
+<span class="nc bnc" id="L36" title="All 2 branches missed.">            } else if (ipAttempt.isBlocked()) {</span>
+                // Desbloqueo automático después de la duración del bloqueo
+<span class="nc" id="L38">                ipAttempt.setBlocked(false);</span>
+<span class="nc" id="L39">                ipAttempt.setAttemptCount(0);</span>
+<span class="nc" id="L40">                ipAttemptRepository.save(ipAttempt);</span>
+            }
+        }
+
+<span class="nc" id="L44">        return false;</span>
+    }
+
+    /**
+     * Registra un intento fallido de inicio de sesión para la IP dada.
+     * 
+     * @param ip Dirección IP a registrar.
+     */
+    public void registerFailedAttempt(String ip) {
+<span class="nc" id="L53">        IpAttempt ipAttempt = ipAttemptRepository.findByIpAddress(ip)</span>
+<span class="nc" id="L54">                .orElseGet(() -&gt; {</span>
+<span class="nc" id="L55">                    IpAttempt newIpAttempt = new IpAttempt();</span>
+<span class="nc" id="L56">                    newIpAttempt.setIpAddress(ip);</span>
+<span class="nc" id="L57">                    return newIpAttempt;</span>
+                });
+
+<span class="nc" id="L60">        ipAttempt.setAttemptCount(ipAttempt.getAttemptCount() + 1);</span>
+<span class="nc" id="L61">        ipAttempt.setLastAttempt(LocalDateTime.now());</span>
+
+<span class="nc bnc" id="L63" title="All 4 branches missed.">        if (ipAttempt.getAttemptCount() &gt;= MAX_ATTEMPTS &amp;&amp; !ipAttempt.isBlocked()) {</span>
+<span class="nc" id="L64">            ipAttempt.setBlocked(true);</span>
+        }
+
+<span class="nc" id="L67">        ipAttemptRepository.save(ipAttempt);</span>
+<span class="nc" id="L68">    }</span>
+
+    /**
+     * Restablece los intentos fallidos para la IP dada.
+     * 
+     * @param ip Dirección IP a restablecer.
+     */
+    public void resetAttempts(String ip) {
+<span class="nc" id="L76">        ipAttemptRepository.findByIpAddress(ip).ifPresent(ipAttemptRepository::delete);</span>
+<span class="nc" id="L77">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

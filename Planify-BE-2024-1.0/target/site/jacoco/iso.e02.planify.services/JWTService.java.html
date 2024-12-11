@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JWTService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.services</a> &gt; <span class="el_source">JWTService.java</span></div><h1>JWTService.java</h1><pre class="source lang-java linenums">package iso.e02.planify.services;
+
+// imports de iso.e02.planify
+import iso.e02.planify.entities.AppUser;
+import iso.e02.planify.entities.CommonUser;
+
+// imports de java
+import java.util.Date;
+
+// imports de spring
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+// imports de auth0
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
+
+
+/*
+ * Servicio que se encarga de la generación y validación de tokens JWT.
+ * Tambien permite obtener el usuario a partir de un token JWT.
+ */
+@Service
+<span class="fc" id="L24">public class JWTService {</span>
+
+    @Autowired
+    private ManageUsersService manageUsersService; // Inyección del servicio ManageUsersService
+
+    @Autowired
+    private ValidateUserService validateUserService; // Inyección del servicio ValidateUserService
+
+    /*
+     * Método que obtiene el usuario a partir de un token JWT.
+     * 
+     * @param authorizationHeader el token JWT que se va a validar. 
+     * @return el usuario común que corresponde al token JWT.
+     */
+    public CommonUser getCommonUserFromJWT(String authorizationHeader) {
+<span class="nc" id="L39">        String userEmail = this.validateUserService.validateJWT(authorizationHeader); // Llama al servicio de validación de usuarios para validar el token JWT</span>
+<span class="nc" id="L40">        return this.manageUsersService.getUserByEmail(userEmail); // Llama al servicio de gestión de usuarios para obtener el usuario a partir del email</span>
+    }
+
+    /*
+     * Método que genera un token JWT para un usuario.
+     * 
+     * @param user el usuario para el que se va a generar el token JWT.
+     * @return el token JWT generado.
+     */
+    public String generarJWT(AppUser user) {
+<span class="nc" id="L50">       return JWT.create()</span>
+<span class="nc" id="L51">            .withSubject(user.getEmail())            // Asigna el email como sujeto del token</span>
+<span class="nc" id="L52">            .withIssuedAt(new Date())                // Fecha de emisión</span>
+<span class="nc" id="L53">            .withExpiresAt(new Date(System.currentTimeMillis() + 604800000 )) // Expiración en 7 días</span>
+<span class="nc" id="L54">            .sign(Algorithm.HMAC256(System.getProperty(&quot;JWT_SECRET&quot;)));    // Firma con HMAC256 y la clave secreta</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

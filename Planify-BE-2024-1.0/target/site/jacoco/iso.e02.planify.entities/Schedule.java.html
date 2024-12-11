@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Schedule.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.entities</a> &gt; <span class="el_source">Schedule.java</span></div><h1>Schedule.java</h1><pre class="source lang-java linenums">package iso.e02.planify.entities;
+
+import java.time.LocalTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+
+/**
+ * Entidad que representa un horario laboral en el sistema.
+ * 
+ * Esta clase define los atributos básicos de un horario laboral, como el ID,
+ * el nombre del bloque, la hora de inicio y la hora de fin. Cada instancia de
+ * esta entidad corresponde a un registro en la tabla de horarios en la base de
+ * datos.
+ */
+
+@Entity
+public class Schedule {
+
+    /**
+     * Identificador único del horario. Actúa como clave primaria en la base de
+     * datos.
+     */
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    /**
+     * Nombre del bloque de horario, como &quot;Mañana&quot;, &quot;Tarde&quot;, etc.
+     * Este campo es obligatorio.
+     */
+
+    @Column(nullable = false)
+    private String blockName;
+
+    /**
+     * Hora de inicio del bloque de horario en formato de cadena (por ejemplo,
+     * &quot;08:00&quot;).
+     * Este campo es obligatorio.
+     */
+
+    @Column(nullable = false, columnDefinition = &quot;TIME(0)&quot;)
+    private LocalTime startHour;
+
+    /**
+     * Hora de fin del bloque de horario en formato de cadena (por ejemplo,
+     * &quot;17:00&quot;).
+     * Este campo es obligatorio.
+     */
+
+    @Column(nullable = false, columnDefinition = &quot;TIME(0)&quot;)
+    private LocalTime endHour;
+
+    /**
+     * Constructor predeterminado de un bloque horario
+     */
+<span class="fc" id="L61">    public Schedule() {</span>
+
+<span class="fc" id="L63">    }</span>
+
+    /**
+     * Constructor de un bloque horario
+     */
+<span class="fc" id="L68">    public Schedule(Long id, String blockName, LocalTime startHour, LocalTime endHour) {</span>
+<span class="fc" id="L69">        this.id = id;</span>
+<span class="fc" id="L70">        this.blockName = blockName;</span>
+<span class="fc" id="L71">        this.startHour = startHour;</span>
+<span class="fc" id="L72">        this.endHour = endHour;</span>
+<span class="fc" id="L73">    }</span>
+
+
+    // Getters y Setters públicos
+
+
+    /**
+     * Obtiene el identificador único del bloque horario.
+     * 
+     * @return el id del bloque horario.
+     */
+    public Long getId() {
+<span class="nc" id="L85">        return id;</span>
+    }
+
+    /**
+     * Establece el identificador único del bloque horario.
+     * 
+     * @param id el id a establecer para el bloque horario.
+     */
+    public void setId(Long id) {
+<span class="nc" id="L94">        this.id = id;</span>
+<span class="nc" id="L95">    }</span>
+
+    /**
+     * Obtiene el nombre del bloque de horario.
+     * 
+     * @return el nombre del bloque de horario.
+     */
+    public String getBlockName() {
+<span class="fc" id="L103">        return blockName;</span>
+    }
+
+    /**
+     * Establece el nombre del bloque de horario.
+     * 
+     * @param blockName el nombre del bloque de horario.
+     */
+    public void setBlockName(String blockName) {
+<span class="fc" id="L112">        this.blockName = blockName;</span>
+<span class="fc" id="L113">    }</span>
+
+    /**
+     * Obtiene la hora de inicio del bloque de horario.
+     * 
+     * @return la hora de inicio del bloque.
+     */
+    public LocalTime getStartHour() {
+<span class="fc" id="L121">        return startHour;</span>
+    }
+
+    /**
+     * Establece la hora de inicio del bloque de horario.
+     * 
+     * @param startHour la hora de inicio del bloque.
+     */
+    public void setStartHour(LocalTime startHour) {
+<span class="fc" id="L130">        this.startHour = startHour;</span>
+<span class="fc" id="L131">    }</span>
+
+    /**
+     * Obtiene la hora de fin del bloque de horario.
+     * 
+     * @return la hora de fin del bloque.
+     */
+    public LocalTime getEndHour() {
+<span class="fc" id="L139">        return endHour;</span>
+    }
+
+    /**
+     * Establece la hora de fin del bloque de horario.
+     * 
+     * @param endHour la hora de fin del bloque.
+     */
+    public void setEndHour(LocalTime endHour) {
+<span class="fc" id="L148">        this.endHour = endHour;</span>
+<span class="fc" id="L149">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

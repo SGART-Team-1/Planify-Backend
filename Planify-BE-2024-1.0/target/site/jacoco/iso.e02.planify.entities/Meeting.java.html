@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Meeting.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.entities</a> &gt; <span class="el_source">Meeting.java</span></div><h1>Meeting.java</h1><pre class="source lang-java linenums">package iso.e02.planify.entities;
+
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+
+@Entity
+<span class="fc" id="L19">public class Meeting {</span>
+
+      /**
+     * Identificador único del usuario, generado automáticamente por la base de datos.
+     */
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+     
+    @Column(nullable = false)
+    private String subject;
+
+    @Column(name = &quot;all_day_long&quot;, nullable = false)
+    private boolean allDayLong;
+
+    @Column(name = &quot;from_date_time&quot;, nullable = true, columnDefinition = &quot;DATETIME2(0)&quot;)
+    private LocalDateTime fromDateTime;
+
+    @Column(name = &quot;to_date_time&quot;, nullable = true,  columnDefinition = &quot;DATETIME2(0)&quot;)
+    private LocalDateTime toDateTime;
+
+    @Column(nullable = false)
+    private boolean isOnline;
+
+    @Enumerated(EnumType.STRING)
+    private Location location;
+
+    @Column(nullable = true)
+    private String observations;
+
+    @Enumerated(EnumType.STRING)
+    private Status status;  // Estado de la reunión: Abierta, Cerrada, Cancelada
+
+    @OneToMany(mappedBy = &quot;meeting&quot;, cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
+    private List&lt;MeetingAttendance&gt; participants;
+
+
+    public Long getId() {
+<span class="nc" id="L58">        return id;</span>
+    }
+
+    public void setId(Long id) {
+<span class="nc" id="L62">        this.id = id;</span>
+<span class="nc" id="L63">    }</span>
+
+    public String getSubject() {
+<span class="fc" id="L66">        return subject;</span>
+    }
+
+    public void setSubject(String subject) {
+<span class="fc" id="L70">        this.subject = subject;</span>
+<span class="fc" id="L71">    }</span>
+
+    public boolean isAllDayLong() {
+<span class="fc" id="L74">        return allDayLong;</span>
+    }
+
+    public void setAllDayLong(boolean allDayLong) {
+<span class="fc" id="L78">        this.allDayLong = allDayLong;</span>
+<span class="fc" id="L79">    }</span>
+
+    public LocalDateTime getFromDateTime() {
+<span class="fc" id="L82">        return fromDateTime;</span>
+    }
+
+    public void setFromDateTime(LocalDateTime fromDateTime) {
+<span class="fc" id="L86">        this.fromDateTime = fromDateTime;</span>
+<span class="fc" id="L87">    }</span>
+
+    public LocalDateTime getToDateTime() {
+<span class="fc" id="L90">        return toDateTime;</span>
+    }
+
+    public void setToDateTime(LocalDateTime toDateTime) {
+<span class="fc" id="L94">        this.toDateTime = toDateTime;</span>
+<span class="fc" id="L95">    }</span>
+
+    public boolean isOnline() {
+<span class="fc" id="L98">        return isOnline;</span>
+    }
+
+    public void setOnline(boolean isOnline) {
+<span class="fc" id="L102">        this.isOnline = isOnline;</span>
+<span class="fc" id="L103">    }</span>
+
+    public Location getLocation() {
+<span class="fc" id="L106">        return location;</span>
+    }
+
+    public void setLocation(Location location) {
+<span class="fc" id="L110">        this.location = location;</span>
+<span class="fc" id="L111">    }</span>
+
+    public String getObservations() {
+<span class="fc" id="L114">        return observations;</span>
+    }
+
+    public void setObservations(String observations) {
+<span class="fc" id="L118">        this.observations = observations;</span>
+<span class="fc" id="L119">    }</span>
+
+    public Status getStatus() {
+<span class="fc" id="L122">        return status;</span>
+    }
+
+    public void setStatus(Status status) {
+<span class="fc" id="L126">        this.status = status;</span>
+<span class="fc" id="L127">    }</span>
+
+    public List&lt;MeetingAttendance&gt; getParticipants() {
+<span class="nc" id="L130">        return participants;</span>
+    }
+
+    public void setParticipants(List&lt;MeetingAttendance&gt; participants) {
+<span class="nc" id="L134">        this.participants = participants;</span>
+<span class="nc" id="L135">    }</span>
+
+<span class="fc" id="L137">    public enum Status {</span>
+<span class="fc" id="L138">        ABIERTA, CERRADA, CANCELADA</span>
+    }
+
+<span class="fc" id="L141">    public enum Location {</span>
+<span class="fc" id="L142">        ESI, POLITECNICO, ALU, OFICINA, DESPACHO, BIBLIOTECA, CAFETERIA</span>
+    }
+
+     public Map&lt;String, Object&gt; toMap() {
+<span class="nc" id="L146">        Map&lt;String, Object&gt; map = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L147">        map.put(&quot;id&quot;, this.id);</span>
+<span class="nc" id="L148">        map.put(&quot;subject&quot;, this.subject);</span>
+<span class="nc" id="L149">        map.put(&quot;allDayLong&quot;, this.allDayLong);</span>
+<span class="nc" id="L150">        map.put(&quot;fromDateTime&quot;, this.fromDateTime);</span>
+<span class="nc" id="L151">        map.put(&quot;toDateTime&quot;, this.toDateTime);</span>
+<span class="nc" id="L152">        map.put(&quot;isOnline&quot;, this.isOnline);</span>
+<span class="nc" id="L153">        map.put(&quot;location&quot;, this.location);</span>
+<span class="nc" id="L154">        map.put(&quot;observations&quot;, this.observations);</span>
+<span class="nc" id="L155">        map.put(&quot;status&quot;, this.status);</span>
+<span class="nc" id="L156">        return map;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

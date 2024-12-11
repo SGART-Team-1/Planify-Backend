@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SystemPropertiesConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.config</a> &gt; <span class="el_source">SystemPropertiesConfig.java</span></div><h1>SystemPropertiesConfig.java</h1><pre class="source lang-java linenums">package iso.e02.planify.config;
+
+import io.github.cdimascio.dotenv.Dotenv;
+
+/**
+ * Clase de configuración de propiedades del sistema.
+ * Carga las propiedades del sistema desde un archivo .env y las establece como propiedades del sistema.
+ * 
+ * Esta es una clase de utilidad que no se puede instanciar.
+ */
+public class SystemPropertiesConfig {
+
+    /**
+     * Constructor privado para evitar la instanciación de esta clase de utilidad.
+     * Lanza una excepción si se intenta instanciar la clase.
+     */
+<span class="nc" id="L17">    private SystemPropertiesConfig() {</span>
+<span class="nc" id="L18">        throw new UnsupportedOperationException(&quot;Esta es una clase de utilidad y no puede ser instanciada&quot;);</span>
+    }
+
+    /**
+     * Carga las propiedades del sistema desde el archivo .env utilizando la librería Dotenv.
+     * Establece estas propiedades como propiedades del sistema, que pueden ser utilizadas en otras partes de la aplicación.
+     */
+    public static void loadSystemProperties() {
+        // Cargar las variables del archivo .env
+<span class="fc" id="L27">        Dotenv dotenv = Dotenv.load();</span>
+
+        // Configurar las propiedades del sistema
+<span class="fc" id="L30">        System.setProperty(&quot;DB_HOST&quot;, dotenv.get(&quot;DB_HOST&quot;));</span>
+<span class="fc" id="L31">        System.setProperty(&quot;DB_PORT&quot;, dotenv.get(&quot;DB_PORT&quot;));</span>
+<span class="fc" id="L32">        System.setProperty(&quot;DB_NAME&quot;, dotenv.get(&quot;DB_NAME&quot;));</span>
+<span class="fc" id="L33">        System.setProperty(&quot;DB_OPTIONS&quot;, dotenv.get(&quot;DB_OPTIONS&quot;));</span>
+<span class="fc" id="L34">        System.setProperty(&quot;DB_USERNAME&quot;, dotenv.get(&quot;DB_USERNAME&quot;));</span>
+<span class="fc" id="L35">        System.setProperty(&quot;DB_PASSWORD&quot;, dotenv.get(&quot;DB_PASSWORD&quot;));</span>
+<span class="fc" id="L36">        System.setProperty(&quot;SERVER_PORT&quot;, dotenv.get(&quot;SERVER_PORT&quot;));</span>
+<span class="fc" id="L37">        System.setProperty(&quot;KEY_STORE_PATH&quot;, dotenv.get(&quot;KEY_STORE_PATH&quot;));</span>
+<span class="fc" id="L38">        System.setProperty(&quot;KEY_STORE_PASSWORD&quot;, dotenv.get(&quot;KEY_STORE_PASSWORD&quot;));</span>
+<span class="fc" id="L39">        System.setProperty(&quot;KEY_STORE_TYPE&quot;, dotenv.get(&quot;KEY_STORE_TYPE&quot;));</span>
+<span class="fc" id="L40">        System.setProperty(&quot;KEY_ALIAS&quot;, dotenv.get(&quot;KEY_ALIAS&quot;));</span>
+<span class="fc" id="L41">        System.setProperty(&quot;EMAIL_FROM&quot;, dotenv.get(&quot;EMAIL_FROM&quot;));</span>
+<span class="fc" id="L42">        System.setProperty(&quot;EMAIL_PASSWORD&quot;, dotenv.get(&quot;EMAIL_PASSWORD&quot;));</span>
+<span class="fc" id="L43">        System.setProperty(&quot;JWT_SECRET&quot;, dotenv.get(&quot;JWT_SECRET&quot;));</span>
+<span class="fc" id="L44">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

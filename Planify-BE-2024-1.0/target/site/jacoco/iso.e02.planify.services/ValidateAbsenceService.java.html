@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ValidateAbsenceService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.services</a> &gt; <span class="el_source">ValidateAbsenceService.java</span></div><h1>ValidateAbsenceService.java</h1><pre class="source lang-java linenums">package iso.e02.planify.services;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+import iso.e02.planify.entities.Absence;
+import iso.e02.planify.entities.Absence.Type;
+import iso.e02.planify.entities.CommonUser;
+import iso.e02.planify.entities.Meeting;
+import iso.e02.planify.entities.MeetingAttendance;
+import iso.e02.planify.entities.Schedule;
+import iso.e02.planify.repositories.AbsenceRepository;
+import iso.e02.planify.repositories.CommonUserRepository;
+import iso.e02.planify.repositories.MeetingAttendanceRepository;
+import iso.e02.planify.repositories.MeetingRespository;
+import iso.e02.planify.repositories.UsersRepository;
+import iso.e02.planify.requests.CreateAbsenceRequest;
+
+@Service
+<span class="fc" id="L30">public class ValidateAbsenceService {</span>
+
+    @Autowired
+    private WorkScheduleService workScheduleService;
+
+    @Autowired
+    private MeetingAttendanceRepository meetingAttendanceRepository;
+
+    @Autowired
+    private AbsenceRepository absencesRepository;
+    
+    @Autowired
+    private CommonUserRepository commonUserRepository;
+
+    @Autowired
+    private MeetingRespository meetingRepository;
+
+
+<span class="fc" id="L48">    private DateTimeFormatter dateTimeFormat = DateTimeFormatter.ofPattern(&quot;yyyy-MM-dd HH:mm&quot;); // Formato de fecha y hora</span>
+    
+<span class="fc" id="L50">    private DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern(&quot;yyyy-MM-dd&quot;); // Formato de fecha</span>
+    
+<span class="fc" id="L52">    private DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern(&quot;HH:mm&quot;); // Formato de hora</span>
+
+     public boolean validateAbsenceInfo(CreateAbsenceRequest absenceInfo) {
+<span class="nc" id="L55">        validateRequiredFields(absenceInfo);</span>
+<span class="nc" id="L56">        validateUserExists(absenceInfo.getUserId());</span>
+<span class="nc" id="L57">        validateUnblockedActiveUser(absenceInfo.getUserId());</span>
+<span class="nc" id="L58">        isValidAbsenceType(absenceInfo.getAbsenceType());</span>
+<span class="nc" id="L59">        isValidDate(absenceInfo.getFromDate());</span>
+<span class="nc" id="L60">        isValidDate(absenceInfo.getToDate());</span>
+<span class="nc" id="L61">        isValidDateOrder(absenceInfo.getFromDate(), absenceInfo.getToDate());</span>
+        // Comprobar isAllDayLong/DateTime
+<span class="nc bnc" id="L63" title="All 2 branches missed.">        if(!absenceInfo.isAllDayLong()) {</span>
+<span class="nc" id="L64">            isValidTime(absenceInfo.getFromTime(), absenceInfo.getToTime());</span>
+        }
+
+<span class="nc" id="L67">        validateAbsenceOverlap(absenceInfo);</span>
+<span class="nc" id="L68">        validateAbsenceOverlapsMeetings(absenceInfo);</span>
+<span class="nc" id="L69">        return true;</span>
+    }
+
+     public boolean validateRequiredFields(CreateAbsenceRequest absenceInfo) {
+<span class="nc" id="L73">        validateNotNull(absenceInfo.getAbsenceType(), &quot;tipo de ausencia&quot;);</span>
+<span class="nc" id="L74">        validateNotNull(absenceInfo.isAllDayLong(), &quot;día completo&quot;);</span>
+<span class="nc" id="L75">        validateNotNull(absenceInfo.getFromDate(), &quot;fecha inicio&quot;);</span>
+<span class="nc" id="L76">        validateNotNull(absenceInfo.getToDate(), &quot;fecha fin&quot;);</span>
+<span class="nc" id="L77">        validateNotNull(absenceInfo.getUserId(), &quot;usuario&quot;);</span>
+
+        // Comprobación de ausencia de día completo
+<span class="nc bnc" id="L80" title="All 2 branches missed.">        if(absenceInfo.isAllDayLong()) {</span>
+<span class="nc" id="L81">            absenceInfo.setFromTime(null);</span>
+<span class="nc" id="L82">            absenceInfo.setToTime(null);</span>
+        } else {
+<span class="nc" id="L84">            validateNotNull(absenceInfo.getFromTime(), &quot;inicio&quot;);</span>
+<span class="nc" id="L85">            validateNotNull(absenceInfo.getToTime(), &quot;fin&quot;);</span>
+        }
+
+<span class="nc" id="L88">        return true;</span>
+    }
+
+    public void validateNotNull(Object field, String fieldName) {
+<span class="nc bnc" id="L92" title="All 4 branches missed.">        if (field == null || </span>
+<span class="nc bnc" id="L93" title="All 2 branches missed.">        field instanceof String &amp;&amp; ((String) field).trim().isEmpty()) {</span>
+<span class="nc" id="L94">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;El campo \&quot;&quot; + fieldName + &quot;\&quot; es obligatorio.&quot;);
+        }
+<span class="nc" id="L97">    }</span>
+
+    public boolean validateUserExists(long userId) {
+<span class="nc bnc" id="L100" title="All 2 branches missed.">        if (!commonUserRepository.existsById(userId)) {</span>
+<span class="nc" id="L101">            throw new ResponseStatusException(HttpStatus.NOT_FOUND, &quot;El usuario no existe.&quot;);</span>
+        }
+<span class="nc" id="L103">        return true;</span>
+    }
+
+    
+    public boolean validateUnblockedActiveUser(long userId) {
+<span class="nc" id="L108">        CommonUser user = commonUserRepository.findById(userId);</span>
+<span class="nc bnc" id="L109" title="All 4 branches missed.">        if (!user.isActivated() || user.isBlocked()) {</span>
+<span class="nc" id="L110">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE, &quot;El usuario no está activo o está bloqueado.&quot;);</span>
+        }
+<span class="nc" id="L112">        return true;</span>
+    }
+    
+
+    
+
+    public boolean isValidAbsenceType(String absenceTypeStr) {
+         try {
+<span class="nc" id="L120">            Type.valueOf(absenceTypeStr.toUpperCase());</span>
+<span class="nc" id="L121">        } catch (IllegalArgumentException e) {</span>
+<span class="nc" id="L122">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;La ausencia no puede tener el tipo \&quot;&quot; + absenceTypeStr + &quot;\&quot;.&quot;);
+<span class="nc" id="L124">        }</span>
+<span class="nc" id="L125">        return true;</span>
+    }
+
+
+      /**
+     * Comprueba si la fecha es válida. Debe ser al menos en el año 2024 y anterior a hoy.
+     * 
+     * @param dateStr la fecha a comprobar
+     * 
+     * @return true si la fecha es correcta, false en caso contrario.
+     */
+    public boolean isValidDate(String dateStr) {
+        try {
+<span class="nc" id="L138">            LocalDate date = parseDate(dateStr);</span>
+    
+<span class="nc bnc" id="L140" title="All 2 branches missed.">            if (date.isBefore(LocalDate.of(2024, 1, 1))) {</span>
+<span class="nc" id="L141">                throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;La fecha de la ausencia debe ser al menos en el año 2024.&quot;);
+            }
+    
+<span class="nc bnc" id="L145" title="All 2 branches missed.">            if (date.isBefore(LocalDate.now())) {</span>
+<span class="nc" id="L146">                throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;La fecha de la ausencia no puede ser anterior al día de hoy.&quot;);
+            }
+    
+<span class="nc bnc" id="L150" title="All 4 branches missed.">            if (date.getDayOfWeek().toString().equals(&quot;SATURDAY&quot;) || date.getDayOfWeek().toString().equals(&quot;SUNDAY&quot;)) {</span>
+<span class="nc" id="L151">                    throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                        &quot;La ausencia no puede ser registrada en fines de semana.&quot;);
+            }
+<span class="nc" id="L154">        } catch (DateTimeParseException e) {</span>
+<span class="nc" id="L155">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;La fecha de la ausencia no tiene un formato válido. Se esperaba 'yyyy-MM-dd'.&quot;);
+<span class="nc" id="L157">        }</span>
+<span class="nc" id="L158">        return true;</span>
+    }
+
+    public boolean isValidDateOrder(String fromDateStr, String toDateStr) {
+<span class="nc" id="L162">        LocalDate fromDate = parseDate(fromDateStr);</span>
+<span class="nc" id="L163">        LocalDate toDate = parseDate(toDateStr);</span>
+
+<span class="nc bnc" id="L165" title="All 2 branches missed.">        if(fromDate.isAfter(toDate)) {</span>
+<span class="nc" id="L166">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;La fecha de inicio de la ausencia debe ser anterior a la fecha de fin.&quot;);
+        }
+<span class="nc" id="L169">        return true;</span>
+    }
+
+      /**
+     * Comprueba si las horas de inicio y fin son válidas. La hora de inicio debe ser anterior a la hora de fin y la duración
+     * de la ausencia debe ser al menos de 30 minutos.
+     * 
+     * @param fromTimeStr la hora de inicio
+     * 
+     * @return true si la fecha es correcta, false en caso contrario.
+     */
+    public boolean isValidTime(String fromTimeStr, String toTimeStr) {
+        try {
+
+<span class="nc" id="L183">            List&lt;Schedule&gt; workSchedule = workScheduleService.getWorkSchedule();</span>
+	
+		    // Verificar que exista al menos un bloque de horario laboral
+<span class="nc bnc" id="L186" title="All 2 branches missed.">		    if (workSchedule.isEmpty()) {</span>
+<span class="nc" id="L187">			    throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE, &quot;No hay horarios laborales configurados&quot;);</span>
+		    }
+	
+		    // Determinar el rango general del horario laboral
+<span class="nc" id="L191">		    LocalTime earliestStart = workScheduleService.getWorkSchedule().get(0).getStartHour();</span>
+<span class="nc" id="L192">	        LocalTime latestEnd = workScheduleService.getWorkSchedule().get(workScheduleService.getWorkSchedule().size() - 1).getEndHour();</span>
+
+            
+<span class="nc" id="L195">            LocalTime fromTime = parseTime(fromTimeStr);</span>
+<span class="nc" id="L196">            LocalTime toTime = parseTime(toTimeStr);</span>
+
+<span class="nc bnc" id="L198" title="All 4 branches missed.">            if (fromTime.isBefore(earliestStart) || toTime.isAfter(latestEnd)) {</span>
+<span class="nc" id="L199">                throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE, &quot;La ausencia no está dentro del rango horario laboral&quot;);</span>
+            }
+
+<span class="nc bnc" id="L202" title="All 2 branches missed.">            if(fromTime.isAfter(toTime)) {</span>
+<span class="nc" id="L203">                throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                &quot;La hora de inicio de la ausencia debe ser anterior a la hora de fin.&quot;);
+            }
+
+<span class="nc bnc" id="L207" title="All 2 branches missed.">            if(fromTime.until(toTime, ChronoUnit.MINUTES) &lt; 30) {</span>
+<span class="nc" id="L208">                throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                &quot;La duración mínima entre la hora de inicio y la hora de fin debe ser al menos de 30 minutos.&quot;);
+            }
+
+            // Verificar solapamiento con al menos un bloque del horario laboral
+<span class="nc" id="L213">		    boolean overlapsWithSchedule = workSchedule.stream().anyMatch(schedule -&gt; {</span>
+<span class="nc" id="L214">			LocalTime scheduleStart = schedule.getStartHour();</span>
+<span class="nc" id="L215">			LocalTime scheduleEnd = schedule.getEndHour();</span>
+<span class="nc bnc" id="L216" title="All 4 branches missed.">			return !(toTime.isBefore(scheduleStart) || fromTime.isAfter(scheduleEnd));//mirar</span>
+		});
+	
+<span class="nc bnc" id="L219" title="All 2 branches missed.">		if (!overlapsWithSchedule) {</span>
+<span class="nc" id="L220">			throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE, &quot;La ausencia no se solapa con ningún bloque del horario laboral&quot;);</span>
+		}
+<span class="nc" id="L222">        } catch (DateTimeParseException e) {</span>
+<span class="nc" id="L223">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;La hora no tiene un formato válido. Se esperaba 'HH:mm'.&quot;);
+<span class="nc" id="L225">        }</span>
+<span class="nc" id="L226">        return true;</span>
+    }
+
+      /**
+     * Convierte una cadena en una fecha y hora
+     * 
+     * @param dateStr fecha en formato de cadena
+     * @param timeStr hora en formato de cadena
+     * 
+     * @return fecha y hora formateada
+     */
+    private LocalDateTime parseDateTime(String dateStr, String timeStr) {
+<span class="nc bnc" id="L238" title="All 4 branches missed.">        if (timeStr == null || timeStr.trim().isEmpty()) {</span>
+<span class="nc" id="L239">            return parseDateTime(dateStr);</span>
+        }
+<span class="nc" id="L241">        return LocalDateTime.parse(dateStr + &quot; &quot; + timeStr, this.dateTimeFormat);</span>
+    }
+
+    /**
+     * Convierte solo una fecha (sin hora) en un objeto LocalDateTime con la hora ajustada al inicio del día.
+     *
+     * @param dateStr La fecha en formato &quot;yyyy-MM-dd&quot;.
+     * 
+     * @return Un objeto LocalDateTime que representa la fecha con la hora configurada como 00:00.
+     */
+    private LocalDateTime parseDateTime(String dateStr) {
+<span class="nc" id="L252">        return parseDate(dateStr).atStartOfDay();</span>
+    }
+
+    /**
+     * Convierte una cadena en una fecha
+     * 
+     * @param dateStr fecha en formato de cadena
+     * @return objeto LocalDate formateado
+     */
+    private LocalDate parseDate(String dateStr) {
+<span class="nc" id="L262">        return LocalDate.parse(dateStr, this.dateFormat);</span>
+    }
+
+    /**
+     * Convierte una cadena en una fecha
+     * 
+     * @param timeStr fecha en formato de cadena
+     * @return objeto LocalTime formateado
+     */
+    private LocalTime parseTime(String timeStr) {
+<span class="nc" id="L272">        return LocalTime.parse(timeStr, this.timeFormat);</span>
+    }
+
+    public boolean validateAbsenceOverlap (CreateAbsenceRequest absenceInfo) {
+<span class="nc" id="L276">        LocalDateTime fromDateTime = parseDateTime(absenceInfo.getFromDate(), absenceInfo.getFromTime());</span>
+<span class="nc" id="L277">        LocalDateTime toDateTime = parseDateTime(absenceInfo.getToDate(), absenceInfo.getToTime());</span>
+       
+<span class="nc" id="L279">        CommonUser user = commonUserRepository.findById(absenceInfo.getUserId());</span>
+<span class="nc" id="L280">        List&lt;Absence&gt; userAbsences = absencesRepository.findByCommonUserId(user.getId());</span>
+<span class="nc bnc" id="L281" title="All 2 branches missed.">        for (Absence absence : userAbsences) {</span>
+<span class="nc bnc" id="L282" title="All 4 branches missed.">            if ((absence.getFromDateTime().isBefore(toDateTime) &amp;&amp; absence.getToDateTime().isAfter(fromDateTime)) ||</span>
+<span class="nc bnc" id="L283" title="All 4 branches missed.">             (absenceInfo.isAllDayLong() &amp;&amp; absence.getFromDateTime().toLocalDate().isEqual(parseDate(absenceInfo.getFromDate())))) {</span>
+<span class="nc" id="L284">                throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE, &quot;El usuario tiene una ausencia en el rango de horas seleccionado.&quot;);</span>
+            }
+<span class="nc" id="L286">        }</span>
+<span class="nc" id="L287">        return true;</span>
+    }
+
+    public Absence toAbsence(CreateAbsenceRequest absenceInfo) {
+<span class="nc" id="L291">        Absence absence = new Absence();</span>
+<span class="nc" id="L292">        absence.setAbsenceType(Type.valueOf(absenceInfo.getAbsenceType().toUpperCase()));</span>
+<span class="nc" id="L293">        absence.setAllDayLong(absenceInfo.isAllDayLong());</span>
+<span class="nc bnc" id="L294" title="All 2 branches missed.">        if(!absenceInfo.isAllDayLong()){</span>
+<span class="nc" id="L295">            absence.setFromDateTime(parseDateTime(absenceInfo.getFromDate(), absenceInfo.getFromTime()));</span>
+<span class="nc" id="L296">            absence.setToDateTime(parseDateTime(absenceInfo.getToDate(), absenceInfo.getToTime()));</span>
+        } else {
+<span class="nc" id="L298">            absence.setFromDateTime(parseDateTime(absenceInfo.getFromDate()));</span>
+<span class="nc" id="L299">            absence.setToDateTime(parseDateTime(absenceInfo.getToDate()));</span>
+        }
+<span class="nc" id="L301">        absence.setUser(commonUserRepository.findById(absenceInfo.getUserId()));</span>
+<span class="nc" id="L302">        return absence;</span>
+    }
+
+    public boolean validateAbsenceExist(long absenceId) {
+<span class="nc bnc" id="L306" title="All 2 branches missed.">        if (!absencesRepository.existsById(absenceId)) {</span>
+<span class="nc" id="L307">            throw new ResponseStatusException(HttpStatus.NOT_FOUND, &quot;La ausencia no existe.&quot;);</span>
+        }
+<span class="nc" id="L309">        return true;</span>
+    }
+
+    //metodo para en caso de que se solape con una reunion, cancelarla o rechazarla dependiendo del rol de usuario en esa reunión
+    public boolean validateAbsenceOverlapsMeetings(CreateAbsenceRequest absenceInfo) {
+<span class="nc" id="L314">        LocalDateTime fromDateTime = parseDateTime(absenceInfo.getFromDate(), absenceInfo.getFromTime());</span>
+<span class="nc" id="L315">        LocalDateTime toDateTime = parseDateTime(absenceInfo.getToDate(), absenceInfo.getToTime());</span>
+<span class="nc" id="L316">        List&lt;MeetingAttendance&gt; meetingAttendances = meetingAttendanceRepository.findByUserId(absenceInfo.getUserId());</span>
+<span class="nc bnc" id="L317" title="All 2 branches missed.">        for (MeetingAttendance meetingAttendance : meetingAttendances) {</span>
+<span class="nc bnc" id="L318" title="All 4 branches missed.">            if (meetingAttendance.getMeeting().getFromDateTime().isBefore(toDateTime) &amp;&amp; meetingAttendance.getMeeting().getToDateTime().isAfter(fromDateTime)) {</span>
+<span class="nc bnc" id="L319" title="All 2 branches missed.">                if (meetingAttendance.getRole().equals(MeetingAttendance.Role.ORGANIZADOR)) {</span>
+<span class="nc" id="L320">                    Meeting meeting = meetingRepository.findById(meetingAttendance.getMeeting().getId()).get();</span>
+<span class="nc" id="L321">                    meeting.setStatus(Meeting.Status.CANCELADA);</span>
+<span class="nc" id="L322">                    meetingRepository.save(meeting);</span>
+<span class="nc" id="L323">                } else {</span>
+<span class="nc" id="L324">                    meetingAttendance.setInvitationStatus(MeetingAttendance.InvitationStatus.RECHAZADA);</span>
+<span class="nc" id="L325">                    meetingAttendance.setDeclineReason(&quot;El usuario tiene una ausencia planificada.&quot;);</span>
+<span class="nc" id="L326">                    meetingAttendanceRepository.save(meetingAttendance);</span>
+                }
+            }
+<span class="nc" id="L329">        }</span>
+<span class="nc" id="L330">        return true;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

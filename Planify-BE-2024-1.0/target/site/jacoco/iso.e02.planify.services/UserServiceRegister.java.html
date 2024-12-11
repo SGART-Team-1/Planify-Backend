@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UserServiceRegister.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.services</a> &gt; <span class="el_source">UserServiceRegister.java</span></div><h1>UserServiceRegister.java</h1><pre class="source lang-java linenums">package iso.e02.planify.services;
+
+// imports de iso.e02.planify
+import iso.e02.planify.entities.CommonUser;
+import iso.e02.planify.repositories.UsersRepository;
+
+// imports de java
+import java.util.Map;
+
+// imports de spring
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+// imports de google-authenticator
+import com.warrenstrange.googleauth.GoogleAuthenticator;
+import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
+import com.warrenstrange.googleauth.GoogleAuthenticatorQRGenerator;
+
+/**
+ * Servicio que gestiona el registro de nuevos usuarios.
+ * Proporciona funcionalidades para guardar un nuevo usuario en la base de
+ * datos.
+ */
+@Service
+<span class="fc" id="L28">public class UserServiceRegister {</span>
+
+	@Autowired
+	private UsersRepository userRepository; // Inyección del repositorio de usuarios.
+
+<span class="fc" id="L33">	private GoogleAuthenticator gAuth = new GoogleAuthenticator();</span>
+
+	/**
+	 * Registra un nuevo usuario en el sistema.
+	 *
+	 * Este método intenta guardar un objeto {@link CommonUser} en la base de datos.
+	 * Si el usuario ya existe, se lanza una excepción de estado.
+	 *
+	 * @param user El usuario que se desea registrar.
+	 */
+	public void register(CommonUser user) {
+		try {
+<span class="fc" id="L45">			GoogleAuthenticatorKey key = gAuth.createCredentials();</span>
+<span class="fc" id="L46">			String secretKey = key.getKey();</span>
+<span class="fc" id="L47">			user.getCredentials().setSecretKey(secretKey);</span>
+<span class="fc" id="L48">			this.userRepository.save(user);</span>
+<span class="fc" id="L49">		} catch (DataIntegrityViolationException e) { // Si el usuario ya existe, se lanza una excepción de estado.</span>
+<span class="fc" id="L50">			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, &quot;El usuario ya está registrado.&quot;);</span>
+<span class="fc" id="L51">		}</span>
+<span class="fc" id="L52">	}</span>
+
+	/**
+	 * Obtiene la URL del código QR para la autenticación en dos pasos.
+	 *
+	 * Este método genera la URL del código QR que se utilizará para la autenticación
+	 * en dos pasos.
+	 *
+	 * @param user El usuario para el que se desea obtener la URL del código QR.
+	 * @return Un mapa con la URL del código QR.
+	 */
+	public Map&lt;String, Object&gt; getQrCodeUrl(CommonUser user) {
+<span class="nc" id="L64">		String secretKey = user.getCredentials().getSecretKey();</span>
+<span class="nc" id="L65">		String issuer = &quot;Planify&quot;;</span>
+		// Genera la URL del código QR
+<span class="nc" id="L67">		return Map.of(</span>
+<span class="nc" id="L68">				&quot;qr_code&quot;, GoogleAuthenticatorQRGenerator.getOtpAuthURL(issuer, user.getEmail(),</span>
+<span class="nc" id="L69">						new GoogleAuthenticatorKey.Builder(secretKey).build()));</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

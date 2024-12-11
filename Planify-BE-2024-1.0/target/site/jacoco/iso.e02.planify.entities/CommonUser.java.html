@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CommonUser.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.entities</a> &gt; <span class="el_source">CommonUser.java</span></div><h1>CommonUser.java</h1><pre class="source lang-java linenums">package iso.e02.planify.entities;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.OneToMany;
+
+import java.time.LocalDate;
+import java.util.List;
+
+/**
+ * Representa un usuario común en la aplicación.
+ * Extiende la clase {@link AppUser} para heredar las propiedades de un usuario general.
+ */
+@Entity
+public class CommonUser extends AppUser {
+
+    /**
+     * Fecha de alta del usuario en la organización.
+     * Este campo es obligatorio (no puede ser nulo).
+     */
+    @Column(nullable = false)
+    private LocalDate registrationDate;
+
+    /**
+     * Departamento de la empresa al que pertenece el usuario.
+     * Este campo es opcional (puede ser nulo).
+     */
+    @Column(nullable = true)
+    private String department;
+
+    /**
+     * Perfil del usuario en la organización (por ejemplo, rol o especialidad).
+     * Este campo es opcional (puede ser nulo).
+     */
+    @Column(nullable = true)
+    private String profile;
+
+    /**
+     * Indica si la cuenta del usuario está activada.
+     * Este campo es obligatorio (no puede ser nulo).
+     */
+    @Column(nullable = false)
+    private boolean activated;
+
+    /**
+     * Indica si la cuenta del usuario está bloqueada.
+     * Este campo es obligatorio (no puede ser nulo).
+     */
+    @Column(nullable = false)
+    private boolean blocked;
+
+    /**
+     * Constructor de la clase CommonUser.
+     * Inicializa las credenciales del usuario.
+     */
+<span class="fc" id="L57">    public CommonUser() {</span>
+<span class="fc" id="L58">        this.credentials = new Credentials();</span>
+<span class="fc" id="L59">    }</span>
+
+    
+<span class="fc" id="L62">    @Column(name = &quot;login_attempts&quot;)</span>
+    protected int loginAttempts = 0;
+
+    @OneToMany(mappedBy = &quot;user&quot;, cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
+    private List&lt;MeetingAttendance&gt; meetings;
+
+    /**
+     * Lista de ausencias asociadas al usuario común.
+     * Se gestiona con una relación de uno a muchos.
+     * Las operaciones en cascada incluyen persistencia y actualización.
+     * Las ausencias huérfanas serán eliminadas.
+     */
+    @OneToMany(mappedBy = &quot;commonUser&quot;, cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
+    protected List&lt;Absence&gt; absences;
+
+    /**
+     * Obtiene la fecha de alta del usuario en la organización.
+     * 
+     * @return la fecha de alta del usuario en la organización.
+     */
+    public LocalDate getRegistrationDate() {
+<span class="fc" id="L83">        return registrationDate;</span>
+    }
+
+    /**
+     * Establece la fecha de alta del usuario en la organización.
+     * 
+     * @param registrationDate la fecha de alta del usuario en la organización a establecer.
+     */
+    public void setRegistrationDate(LocalDate registrationDate) {
+<span class="fc" id="L92">        this.registrationDate = registrationDate;</span>
+<span class="fc" id="L93">    }</span>
+
+    /**
+     * Obtiene el departamento al que pertenece el usuario.
+     * 
+     * @return el departamento del usuario.
+     */
+    public String getDepartment() {
+<span class="fc" id="L101">        return department;</span>
+    }
+
+    /**
+     * Establece el departamento al que pertenece el usuario.
+     * 
+     * @param department el departamento a establecer.
+     */
+    public void setDepartment(String department) {
+<span class="fc" id="L110">        this.department = department;</span>
+<span class="fc" id="L111">    }</span>
+
+    /**
+     * Obtiene el perfil del usuario en el sistema.
+     * 
+     * @return el perfil del usuario.
+     */
+    public String getProfile() {
+<span class="fc" id="L119">        return profile;</span>
+    }
+
+    /**
+     * Establece el perfil del usuario en el sistema.
+     * 
+     * @param profile el perfil a establecer.
+     */
+    public void setProfile(String profile) {
+<span class="fc" id="L128">        this.profile = profile;</span>
+<span class="fc" id="L129">    }</span>
+
+    /**
+     * Indica si la cuenta del usuario está activada.
+     * 
+     * @return true si la cuenta está activada, false en caso contrario.
+     */
+    public boolean isActivated() {
+<span class="fc" id="L137">        return activated;</span>
+    }
+
+    /**
+     * Establece el estado de activación de la cuenta del usuario.
+     * 
+     * @param activated true para activar la cuenta, false para desactivarla.
+     */
+    public void setActivated(boolean activated) {
+<span class="fc" id="L146">        this.activated = activated;</span>
+<span class="fc" id="L147">    }</span>
+
+    /**
+     * Indica si la cuenta del usuario está bloqueada.
+     * 
+     * @return true si la cuenta está bloqueada, false en caso contrario.
+     */
+    public boolean isBlocked() {
+<span class="fc" id="L155">        return blocked;</span>
+    }
+
+    /**
+     * Establece el estado de bloqueo de la cuenta del usuario.
+     * 
+     * @param blocked true para bloquear la cuenta, false para desbloquearla.
+     */
+    public void setBlocked(boolean blocked) {
+<span class="fc" id="L164">        this.blocked = blocked;</span>
+<span class="fc" id="L165">    }</span>
+
+     /**
+     * Obtiene el número de intentos de inicio de sesión del usuario.
+     * 
+     * @return el número de intentos de inicio de sesión.
+     */
+    public int getLoginAttempts() {
+<span class="nc" id="L173">        return loginAttempts;</span>
+    }
+
+    /**
+     * Establece el número de intentos de inicio de sesión del usuario.
+     * 
+     * @param loginAttempts el número de intentos de inicio de sesión a establecer.
+     */
+    public void setLoginAttempts(int loginAttempts) {
+<span class="nc" id="L182">        this.loginAttempts = loginAttempts;</span>
+<span class="nc" id="L183">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

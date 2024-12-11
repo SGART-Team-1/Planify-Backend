@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AbsencesService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.services</a> &gt; <span class="el_source">AbsencesService.java</span></div><h1>AbsencesService.java</h1><pre class="source lang-java linenums">package iso.e02.planify.services;
+
+// imports de iso.e02.planify.services
+import iso.e02.planify.entities.Absence;
+import iso.e02.planify.repositories.AbsenceRepository;
+import iso.e02.planify.repositories.MeetingAttendanceRepository;
+import iso.e02.planify.requests.CreateAbsenceRequest;
+
+import java.time.LocalDateTime;
+// imports de java
+import java.util.List;
+
+// imports de spring
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+/**
+ * Servicio para gestionar las ausencias de los usuarios.
+ * 
+ * Proporciona métodos para crear, listar y eliminar ausencias de los
+ * usuarios.
+ */
+@Service
+<span class="fc" id="L24">public class AbsencesService {</span>
+
+	@Autowired
+	private AbsenceRepository absenceRepository; // Inyección del repositorio de ausencias
+
+	@Autowired
+	private MeetingAttendanceRepository meetingAttendanceRepository;
+
+	public boolean checkMeetingOverlap(CreateAbsenceRequest absenceInfo) {
+		LocalDateTime fromDateTime;
+		LocalDateTime toDateTime;
+<span class="nc bnc" id="L35" title="All 2 branches missed.">		if (absenceInfo.isAllDayLong()) {</span>
+<span class="nc" id="L36">			fromDateTime = LocalDateTime.parse(absenceInfo.getFromDate() + &quot;T&quot; + &quot;00:00&quot;);</span>
+<span class="nc" id="L37">			toDateTime = LocalDateTime.parse(absenceInfo.getToDate() + &quot;T&quot; + &quot;23:59&quot;);</span>
+		}
+		else {
+<span class="nc" id="L40">			fromDateTime = LocalDateTime.parse(absenceInfo.getFromDate() + &quot;T&quot; + absenceInfo.getFromTime());</span>
+<span class="nc" id="L41">			toDateTime = LocalDateTime.parse(absenceInfo.getToDate() + &quot;T&quot; + absenceInfo.getToTime());</span>
+		}
+<span class="nc bnc" id="L43" title="All 2 branches missed.">		return meetingAttendanceRepository.checkOverlap(fromDateTime, toDateTime, absenceInfo.getUserId()) &gt; 0;</span>
+	}
+
+	/**
+	 * Guarda una nueva ausencia en la base de datos.
+	 */
+	public void create(Absence absence) {
+<span class="nc" id="L50">		absenceRepository.save(absence);</span>
+<span class="nc" id="L51">	}</span>
+
+	/**
+	 * Lista todas las ausencias asociadas a un usuario específico.
+	 * 
+	 * @param userId ID del usuario cuyas ausencias se desean listar.
+	 * @return una lista de ausencias asociadas al usuario.
+	 */
+	public List&lt;Absence&gt; list(Long userId) {
+<span class="fc" id="L60">		return absenceRepository.findByCommonUserId(userId);</span>
+	}
+
+	/**
+	 * Elimina una ausencia específica de la base de datos.
+	 * 
+	 * @param absenceId ID de la ausencia que se desea eliminar.
+	 */
+	public void delete(Long absenceId) {
+<span class="fc" id="L69">		absenceRepository.deleteById(absenceId);</span>
+<span class="fc" id="L70">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

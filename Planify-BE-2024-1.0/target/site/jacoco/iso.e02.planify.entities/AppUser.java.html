@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AppUser.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.entities</a> &gt; <span class="el_source">AppUser.java</span></div><h1>AppUser.java</h1><pre class="source lang-java linenums">package iso.e02.planify.entities;
+
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorColumn;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.InheritanceType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+
+/**
+ * Clase abstracta que representa un usuario en la aplicación.
+ * Esta clase utiliza herencia para ser extendida por otros tipos de usuarios.
+ * La estrategia de herencia es de tipo &quot;JOINED&quot; (las tablas estarán unidas mediante una clave externa.)
+ */
+@Entity
+@Inheritance(strategy = InheritanceType.JOINED)
+@DiscriminatorColumn(name = &quot;dtype&quot;)
+<span class="fc" id="L25">public abstract class AppUser {</span>
+
+    /**
+     * Identificador único del usuario, generado automáticamente por la base de datos.
+     */
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    protected Long id;
+
+    /**
+     * Nombre del usuario.
+     * Este campo es obligatorio (no puede ser nulo).
+     */
+    @Column(nullable = false)
+    protected String name;
+
+    /**
+     * Apellidos del usuario.
+     * Este campo es obligatorio (no puede ser nulo).
+     */
+    @Column(nullable = false)
+    protected String surnames;
+
+    /**
+     * Dirección de correo electrónico del usuario.
+     * Este campo es obligatorio y debe ser único en la base de datos.
+     */
+    @Column(nullable = false, unique = true)
+    protected String email;
+
+    /**
+     * Centro al que está asociado el usuario.
+     * Este campo es obligatorio.
+     */
+    @Column(nullable = false)
+    protected String centre;
+
+    /**
+     * Foto de perfil del usuario almacenada como un array de bytes.
+     * Este campo es opcional y puede ser nulo.
+     */
+    @Lob
+    @Column(name = &quot;photo&quot;, columnDefinition = &quot;VARBINARY(MAX)&quot;, nullable = true)
+    protected byte[] photo;
+
+    /**
+     * Credenciales del usuario, asociadas mediante una relación de uno a uno.
+     * Se aplican operaciones en cascada, de modo que la persistencia y eliminación
+     * de las credenciales están ligadas a la del usuario.
+     */
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = &quot;credentialsID&quot;, referencedColumnName = &quot;id&quot;)
+    protected Credentials credentials;
+
+
+    /**
+     * Obtiene el tipo de usuario.
+     * El tipo de usuario es el nombre simple de la clase que extiende {@code AppUser}.
+     * 
+     * @return el tipo de usuario.
+     */
+    public String getType() {
+<span class="fc" id="L87">        return this.getClass().getSimpleName();</span>
+    }
+
+    /**
+     * Obtiene el identificador único del usuario.
+     * 
+     * @return el id del usuario.
+     */
+    public Long getId() {
+<span class="fc" id="L96">        return id;</span>
+    }
+
+    /**
+     * Establece el identificador único del usuario.
+     * 
+     * @param id el id a establecer para el usuario.
+     */
+    public void setId(Long id) {
+<span class="fc" id="L105">        this.id = id;</span>
+<span class="fc" id="L106">    }</span>
+
+    /**
+     * Obtiene el nombre del usuario.
+     * 
+     * @return el nombre del usuario.
+     */
+    public String getName() {
+<span class="fc" id="L114">        return name;</span>
+    }
+
+    /**
+     * Establece el nombre del usuario.
+     * 
+     * @param name el nombre a establecer para el usuario.
+     */
+    public void setName(String name) {
+<span class="fc" id="L123">        this.name = name;</span>
+<span class="fc" id="L124">    }</span>
+
+    /**
+     * Obtiene los apellidos del usuario.
+     * 
+     * @return los apellidos del usuario.
+     */
+    public String getSurnames() {
+<span class="fc" id="L132">        return surnames;</span>
+    }
+
+    /**
+     * Establece los apellidos del usuario.
+     * 
+     * @param surnames los apellidos a establecer para el usuario.
+     */
+    public void setSurnames(String surnames) {
+<span class="fc" id="L141">        this.surnames = surnames;</span>
+<span class="fc" id="L142">    }</span>
+
+    /**
+     * Obtiene el correo electrónico del usuario.
+     * 
+     * @return el correo electrónico del usuario.
+     */
+    public String getEmail() {
+<span class="fc" id="L150">        return email;</span>
+    }
+
+    /**
+     * Establece el correo electrónico del usuario.
+     * 
+     * @param email el correo electrónico a establecer para el usuario.
+     */
+    public void setEmail(String email) {
+<span class="fc" id="L159">        this.email = email;</span>
+<span class="fc" id="L160">    }</span>
+
+    /**
+     * Obtiene el centro al que está asociado el usuario.
+     * 
+     * @return el centro del usuario.
+     */
+    public String getCentre() {
+<span class="fc" id="L168">        return centre;</span>
+    }
+
+    /**
+     * Establece el centro al que está asociado el usuario.
+     * 
+     * @param centre el centro a establecer para el usuario.
+     */
+    public void setCentre(String centre) {
+<span class="fc" id="L177">        this.centre = centre;</span>
+<span class="fc" id="L178">    }</span>
+
+    /**
+     * Obtiene la foto de perfil del usuario como un array de bytes.
+     * 
+     * @return la foto de perfil del usuario.
+     */
+    public byte[] getPhoto() {
+<span class="fc" id="L186">        return photo;</span>
+    }
+
+    /**
+     * Establece la foto de perfil del usuario.
+     * 
+     * @param photo la foto en formato de array de bytes a establecer.
+     */
+    public void setPhoto(byte[] photo) {
+<span class="fc" id="L195">        this.photo = photo;</span>
+<span class="fc" id="L196">    }</span>
+
+    /**
+     * Obtiene las credenciales del usuario.
+     * 
+     * @return las credenciales del usuario.
+     */
+    public Credentials getCredentials() {
+<span class="fc" id="L204">        return credentials;</span>
+    }
+
+    /**
+     * Establece las credenciales del usuario.
+     * 
+     * @param credentials las credenciales a establecer para el usuario.
+     */
+    public void setCredentials(Credentials credentials) {
+<span class="fc" id="L213">        this.credentials = credentials;</span>
+<span class="fc" id="L214">    }</span>
+
+    /**
+     * Obtiene la contraseña del usuario.
+     * 
+     * @return la contraseña del usuario.
+     */
+    public String getPassword() {
+<span class="nc" id="L222">        return this.credentials.getPassword();</span>
+    }
+
+    /**
+     * Establece la contraseña del usuario.
+     * 
+     * @param password la contraseña a establecer en las credenciales.
+     */
+    public void setPassword(String password) {
+<span class="fc" id="L231">        this.credentials.setPassword(password);</span>
+<span class="fc" id="L232">    }</span>
+
+   
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

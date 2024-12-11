@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EmailSMTP.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.services</a> &gt; <span class="el_source">EmailSMTP.java</span></div><h1>EmailSMTP.java</h1><pre class="source lang-java linenums">package iso.e02.planify.services;
+
+// imports de java
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Properties;
+import java.util.logging.Logger;
+import java.util.logging.Level;
+
+// imports de javax.mail
+import javax.mail.Authenticator;
+import javax.mail.Message;
+import javax.mail.MessagingException;
+import javax.mail.PasswordAuthentication;
+import javax.mail.Session;
+import javax.mail.Transport;
+import javax.mail.internet.AddressException;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
+
+/**
+ * Clase para enviar correos electrónicos utilizando el protocolo SMTP.
+ * Se utiliza para enviar correos de recuperación de contraseña.
+ */
+<span class="fc" id="L27">public class EmailSMTP {</span>
+
+    /**
+     * Logger para la clase EmailSMTP.
+     */
+<span class="fc" id="L32">    private static final Logger LOGGER = Logger.getLogger(EmailSMTP.class.getName());</span>
+
+    /**
+     * Envía un correo electrónico al usuario con un enlace para cambiar la
+     * contraseña.
+     *
+     * @param userEmail Dirección de correo electrónico del destinatario.
+     * @param token     Token único para la recuperación de contraseña.
+     * @throws AddressException   Si hay un problema con la dirección de correo
+     *                            electrónico.
+     * @throws MessagingException Si hay un problema al enviar el correo
+     *                            electrónico.
+     */
+    public void sendEmail(String userEmail, String token) throws javax.mail.MessagingException {
+<span class="fc" id="L46">        String emailFrom = System.getProperty(&quot;EMAIL_FROM&quot;);</span>
+<span class="fc" id="L47">        String emailTo = userEmail;</span>
+<span class="fc" id="L48">        String subject = &quot;Cambio de contraseña&quot;;</span>
+<span class="fc" id="L49">        String passwordFrom = System.getProperty(&quot;EMAIL_PASSWORD&quot;);</span>
+        //String resetLink = &quot;http://localhost:4200/change-password?token=&quot; + token;
+<span class="fc" id="L51">        String resetLink = &quot;https://planify-2024.web.app/change-password?token=&quot; + token; //usado para producción</span>
+<span class="fc" id="L52">        String htmlCode = &quot;&quot;;</span>
+        // Cargar el contenido del correo electrónico desde un archivo HTML
+        try {
+<span class="fc" id="L55">            htmlCode = new String(Files</span>
+<span class="fc" id="L56">                    .readAllBytes(Paths.get(getClass().getClassLoader().getResource(&quot;emailContent.html&quot;).toURI())));</span>
+<span class="nc" id="L57">        } catch (IOException | URISyntaxException e) {</span>
+<span class="nc" id="L58">            LOGGER.log(Level.SEVERE,&quot;context&quot;, e);</span>
+<span class="fc" id="L59">        }</span>
+<span class="fc" id="L60">        htmlCode = htmlCode.replace(&quot;${userEmail}&quot;, userEmail);</span>
+<span class="fc" id="L61">        htmlCode = htmlCode.replace(&quot;${resetLink}&quot;, resetLink);</span>
+
+<span class="fc" id="L63">        String content = htmlCode;</span>
+<span class="fc" id="L64">        Properties properties = new Properties();</span>
+<span class="fc" id="L65">        properties.put(&quot;mail.smtp.host&quot;, &quot;smtp.gmail.com&quot;);</span>
+<span class="fc" id="L66">        properties.put(&quot;mail.smtp.port&quot;, &quot;587&quot;); // Puerto para STARTTLS</span>
+<span class="fc" id="L67">        properties.put(&quot;mail.smtp.auth&quot;, &quot;true&quot;);</span>
+<span class="fc" id="L68">        properties.put(&quot;mail.smtp.starttls.enable&quot;, &quot;true&quot;); // Habilitar STARTTLS</span>
+<span class="fc" id="L69">        properties.put(&quot;mail.smtp.ssl.protocols&quot;, &quot;TLSv1.2&quot;); // Configurar protocolos SSL</span>
+
+<span class="fc" id="L71">        Session session = Session.getInstance(properties, new Authenticator() {</span>
+            @Override
+            protected PasswordAuthentication getPasswordAuthentication() {
+<span class="fc" id="L74">                return new PasswordAuthentication(emailFrom, passwordFrom);</span>
+            }
+        });
+
+        // Crear y enviar el mensaje
+        try {
+<span class="fc" id="L80">            MimeMessage message = new MimeMessage(session);</span>
+<span class="fc" id="L81">            message.setFrom(new InternetAddress(emailFrom));</span>
+<span class="fc" id="L82">            message.setRecipient(Message.RecipientType.TO, new InternetAddress(emailTo));</span>
+<span class="fc" id="L83">            message.setSubject(subject);</span>
+<span class="fc" id="L84">            message.setContent(content, &quot;text/html; charset=UTF-8&quot;);</span>
+<span class="nc" id="L85">            Transport.send(message);</span>
+<span class="fc" id="L86">        } catch (MessagingException e) {</span>
+<span class="fc" id="L87">             LOGGER.log(Level.SEVERE,&quot;context&quot;, e);</span>
+<span class="nc" id="L88">        }</span>
+<span class="fc" id="L89">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

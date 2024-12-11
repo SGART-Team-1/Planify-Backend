@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RegisterRequest.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.requests</a> &gt; <span class="el_source">RegisterRequest.java</span></div><h1>RegisterRequest.java</h1><pre class="source lang-java linenums">package iso.e02.planify.requests;
+
+/**
+ * Clase que representa una solicitud de registro de usuario.
+ * Extiende la clase base UserRequest e incluye campos adicionales específicos.
+ */
+public class RegisterRequest extends UserRequest{
+
+    
+    private String registrationDate;
+    private String department;
+    private String profile;
+
+    /**
+     * Constructor predeterminado que guarda los campos obligatorios de una petición HTTPS como objeto.
+     *
+     * @param name             el nombre del usuario.
+     * @param surnames         los apellidos del usuario.
+     * @param centre           el centro del usuario.
+     * @param registrationDate la fecha de registro del usuario.
+     * @param email            el correo electrónico del usuario.
+     * @param password         la contraseña del usuario.
+     * @param confirmPassword  la contraseña para confirmar del usuario.
+     */
+    public RegisterRequest(String name, String surnames, String centre, String registrationDate,
+    String email, String password, String confirmPassword) {
+<span class="fc" id="L27">        super(name, surnames, centre, email, password, confirmPassword);</span>
+<span class="fc" id="L28">        this.registrationDate = registrationDate;</span>
+<span class="fc" id="L29">    }</span>
+
+    /**
+     * Obtiene la fecha de alta del usuario.
+     *
+     * @return la fecha de alta del usuario.
+     */
+    public String getRegistrationDate() {
+<span class="fc" id="L37">        return registrationDate;</span>
+    }
+
+    /**
+     * Establece la fecha de alta del usuario.
+     *
+     * @param registrationDate la fecha de alta del usuario.
+     */
+    public void setRegistrationDate(String registrationDate) {
+<span class="fc" id="L46">        this.registrationDate = registrationDate;</span>
+<span class="fc" id="L47">    }</span>
+
+    /**
+     * Obtiene el departamento del usuario.
+     *
+     * @return el departamento del usuario.
+     */
+    public String getDepartment() {
+<span class="fc" id="L55">        return department;</span>
+    }
+
+    /**
+     * Establece el departamento del usuario.
+     *
+     * @param department el departamento del usuario.
+     */
+    public void setDepartment(String department) {
+<span class="fc" id="L64">        this.department = department;</span>
+<span class="fc" id="L65">    }</span>
+
+    /**
+     * Obtiene el perfil del usuario.
+     *
+     * @return el perfil del usuario.
+     */
+    public String getProfile() {
+<span class="fc" id="L73">        return profile;</span>
+    }
+
+    /**
+     * Establece el perfil del usuario.
+     *
+     * @param profile el perfil del usuario.
+     */
+    public void setProfile(String profile) {
+<span class="fc" id="L82">        this.profile = profile;</span>
+<span class="fc" id="L83">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

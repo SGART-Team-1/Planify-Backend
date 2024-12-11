@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>WorkScheduleController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.controllers</a> &gt; <span class="el_source">WorkScheduleController.java</span></div><h1>WorkScheduleController.java</h1><pre class="source lang-java linenums">package iso.e02.planify.controllers;
+
+// imports de iso.e02.planify
+import iso.e02.planify.entities.Schedule;
+import iso.e02.planify.requests.WorkScheduleRequest;
+import iso.e02.planify.services.WorkScheduleService;
+
+// imports de java
+import java.util.List;
+
+// imports de spring
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * Controlador REST para gestionar las peticiones relacionadas con los horarios
+ * laborales.
+ * 
+ * Esta clase maneja las solicitudes HTTPS para agregar y obtener
+ * los horarios de trabajo almacenados en la base de datos.
+ * Proporciona métodos para la creación y consulta de horarios laborales.
+ */
+@RestController
+@RequestMapping(&quot;workSchedule&quot;) // Ruta base para los puntos de acceso de horarios laborales
+@CrossOrigin(&quot;*&quot;)
+<span class="fc" id="L31">public class WorkScheduleController {</span>
+
+    @Autowired // Inyección del servicio de horarios laborales
+    private WorkScheduleService workScheduleService;
+
+    /**
+     * Guarda un nuevo horario laboral en la base de datos.
+     * 
+     * Este método recibe un objeto {WorkScheduleRequest} desde la solicitud
+     * HTTPS, que contiene los datos del horario laboral en forma de lista de bloques.
+     * Los bloques horarios son luego procesados y almacenados en la base de datos
+     * a través del servicio {WorkScheduleService}.
+     * 
+     * @param workScheduleInfo el objeto de la solicitud que contiene la lista de bloques
+     *                horarios para ser guardados en la base de datos.
+     */
+    @PostMapping(&quot;/addWorkSchedule&quot;)
+    public void addWorkSchedule(@RequestBody WorkScheduleRequest workScheduleInfo) {
+<span class="fc" id="L49">        this.workScheduleService.validateWorkSchedule(workScheduleInfo.getBlocks()); // Validación de los bloques horarios</span>
+<span class="fc" id="L50">        this.workScheduleService.saveWorkSchedule(workScheduleInfo.getBlocks()); // Llamada al servicio para guardar los bloques horarios</span>
+<span class="fc" id="L51">    }</span>
+
+    /**
+     * Obtiene los horarios laborales guardados en la base de datos.
+     * 
+     * Este método recupera y devuelve una lista de objetos Schedule que representan los horarios laborales almacenados.
+     * 
+     * @return una lista de objetos Schedule que representan los bloques del horario laboral guardado.
+     */
+    @GetMapping(&quot;/getWorkSchedule&quot;)
+    public List&lt;Schedule&gt; getWorkSchedule() {
+<span class="fc" id="L62">        return this.workScheduleService.getWorkSchedule(); // Llamada al servicio para obtener los bloques horarios</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

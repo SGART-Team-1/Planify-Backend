@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ManageUsersService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.services</a> &gt; <span class="el_source">ManageUsersService.java</span></div><h1>ManageUsersService.java</h1><pre class="source lang-java linenums">package iso.e02.planify.services;
+
+// imports de iso.e02.planify
+import iso.e02.planify.entities.CommonUser;
+import iso.e02.planify.entities.Meeting;
+import iso.e02.planify.entities.MeetingAttendance;
+import iso.e02.planify.repositories.CommonUserRepository;
+import iso.e02.planify.repositories.MeetingAttendanceRepository;
+import iso.e02.planify.repositories.MeetingRespository;
+import iso.e02.planify.requests.CreateAbsenceRequest;
+
+// imports de java
+import java.util.Optional;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+// imports de spring
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+// imports de jakarta
+import jakarta.transaction.Transactional;
+
+/**
+ * Servicio para gestionar operaciones relacionadas con usuarios,
+ * incluyendo obtener, bloquear, activar, editar y eliminar usuarios.
+ */
+@Service
+<span class="fc" id="L33">public class ManageUsersService {</span>
+    @Autowired
+    private CommonUserRepository commonUserRepository; // Inyección del repositorio de usuarios comunes
+
+    @Autowired
+    private MeetingAttendanceRepository meetingAttendanceRepository; // Inyección del repositorio de asistencia a reuniones
+
+    @Autowired
+    private MeetingRespository meetingRepository; // Inyección del repositorio de reuniones
+
+    /**
+     * Obtiene una lista de todos los usuarios.
+     *
+     * @return Lista de todos los usuarios.
+     */
+    public List&lt;CommonUser&gt; getAllUsers() {
+<span class="fc" id="L49">        return commonUserRepository.findAll();</span>
+    }
+
+    /**
+     * Obtiene una lista de usuarios con los datos mínimos (de una query) necesarios
+     * para mostrar.
+     *
+     * @return Lista de usuarios en un formato de mapa de datos con campos
+     *         específicos.
+     */
+    public List&lt;Map&lt;String, Object&gt;&gt; getUserToShow() {
+<span class="nc" id="L60">        return commonUserRepository.getUserToShow();</span>
+    }
+
+    /**
+     * Obtiene un usuario específico por su ID.
+     *
+     * @param userId ID del usuario.
+     * @return Optional que contiene el usuario si se encuentra.
+     */
+    public Optional&lt;CommonUser&gt; getUserById(Long userId) {
+<span class="nc" id="L70">        return commonUserRepository.findById(userId);</span>
+    }
+
+    /**
+     * Comprueba si existe un usuario específico por su ID.
+     *
+     * @param userId ID del usuario.
+     * @return true si existe, false en caso contrario
+     */
+    public boolean userExists(Long userId){
+<span class="nc bnc" id="L80" title="All 2 branches missed.">        if(!commonUserRepository.existsById(userId)) {</span>
+<span class="nc" id="L81">            throw new ResponseStatusException(HttpStatus.NOT_FOUND, &quot;El usuario no existe.&quot;);</span>
+        }
+<span class="nc" id="L83">        return true;</span>
+    }
+    
+    /**
+     * Obtiene un usuario específico por su email.
+     *
+     * @param email Email del usuario.
+     * @return el usuario si se encuentra.
+     */
+    public CommonUser getUserByEmail(String email) {
+<span class="nc" id="L93">        CommonUser user = commonUserRepository.findByEmail(email);</span>
+<span class="nc bnc" id="L94" title="All 2 branches missed.">        if(user == null) {</span>
+<span class="nc" id="L95">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;No existe el usuario con email \&quot;&quot; + email + &quot;\&quot;.&quot;);
+        }
+<span class="nc" id="L98">        return user;</span>
+    }
+
+    /**
+     * Bloquea a un usuario específico.
+     *
+     * @param userId ID del usuario a bloquear.
+     * @return true si el usuario fue bloqueado exitosamente.
+     */
+    @Transactional
+    public boolean blockUser(Long userId) {
+<span class="nc" id="L109">        Optional&lt;CommonUser&gt; userOptional = getUserById(userId);</span>
+<span class="nc bnc" id="L110" title="All 2 branches missed.">        if (userOptional.isPresent()) { // Validar que el usuario exista</span>
+<span class="nc" id="L111">            CommonUser user = userOptional.get();</span>
+<span class="nc" id="L112">            updateUserBlockedStatus(user, true); // Actualizar el estado de bloqueo</span>
+<span class="nc" id="L113">            cancelOrRejectMeetings(user); // Cancelar o rechazar las reuniones en las que participa dependiendo de su rol en éstas</span>
+<span class="nc" id="L114">            commonUserRepository.save(user); // Guardar los cambios en el repositorio</span>
+<span class="nc" id="L115">            return true;</span>
+        } else {
+<span class="nc" id="L117">            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, &quot;No se puede bloquear un usuario desconocido.&quot;);</span>
+        }
+    }
+
+    /**
+     * Desbloquea a un usuario específico.
+     *
+     * @param userId ID del usuario a desbloquear.
+     * @return true si el usuario fue desbloqueado exitosamente.
+     */
+    @Transactional
+    public boolean unblockUser(Long userId) {
+<span class="nc" id="L129">        Optional&lt;CommonUser&gt; userOptional = getUserById(userId);</span>
+<span class="nc bnc" id="L130" title="All 2 branches missed.">        if (userOptional.isPresent()) { // Validar que el usuario exista</span>
+<span class="nc" id="L131">            CommonUser user = userOptional.get();</span>
+<span class="nc" id="L132">            updateUserBlockedStatus(user, false); // Actualizar el estado de bloqueo</span>
+<span class="nc" id="L133">            user.setLoginAttempts(0);</span>
+<span class="nc" id="L134">            commonUserRepository.save(user); // Guardar los cambios en el repositorio</span>
+<span class="nc" id="L135">            return true;</span>
+        } else {
+<span class="nc" id="L137">            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,</span>
+                    &quot;No se puede desbloquear un usuario desconocido.&quot;);
+        }
+    }
+
+    /**
+     * Activa a un usuario específico.
+     *
+     * @param userId ID del usuario a activar.
+     * @return true si el usuario fue activado exitosamente.
+     */
+    @Transactional
+    public boolean activateUser(Long userId) {
+<span class="nc" id="L150">        Optional&lt;CommonUser&gt; userOptional = getUserById(userId);</span>
+<span class="nc bnc" id="L151" title="All 2 branches missed.">        if (userOptional.isPresent()) { // Validar que el usuario exista</span>
+<span class="nc" id="L152">            CommonUser user = userOptional.get();</span>
+<span class="nc" id="L153">            user.setActivated(true); // Activar el usuario</span>
+<span class="nc" id="L154">            commonUserRepository.save(user); // Guardar los cambios en el repositorio</span>
+<span class="nc" id="L155">            return true;</span>
+        } else {
+<span class="nc" id="L157">            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, &quot;No se puede activar un usuario desconocido.&quot;);</span>
+        }
+    }
+
+    /**
+     * Edita la información de un usuario específico.
+     *
+     * @param userId      ID del usuario a editar.
+     * @param updatedUser Objeto CommonUser con la nueva información.
+     */
+    @Transactional
+    public void editUser(Long userId, CommonUser updatedUser) {
+<span class="nc" id="L169">        Optional&lt;CommonUser&gt; userOptional = getUserById(userId);</span>
+<span class="nc bnc" id="L170" title="All 2 branches missed.">        if (userOptional.isPresent()) { // Validar que el usuario exista</span>
+<span class="nc" id="L171">            CommonUser existingUser = userOptional.get();</span>
+            // Actualizar los atributos de AppUser (clase padre)
+<span class="nc" id="L173">            existingUser.setName(updatedUser.getName());</span>
+<span class="nc" id="L174">            existingUser.setSurnames(updatedUser.getSurnames());</span>
+<span class="nc" id="L175">            existingUser.setCentre(updatedUser.getCentre());</span>
+<span class="nc" id="L176">            existingUser.setRegistrationDate(updatedUser.getRegistrationDate());</span>
+<span class="nc" id="L177">            existingUser.setDepartment(updatedUser.getDepartment());</span>
+<span class="nc" id="L178">            existingUser.setProfile(updatedUser.getProfile());</span>
+            // Si hay cambio en la pwd, se introduce en la base de datos
+<span class="nc" id="L180">            String pwd = updatedUser.getPassword();</span>
+<span class="nc bnc" id="L181" title="All 4 branches missed.">            if(pwd != null &amp;&amp; !pwd.trim().isEmpty()) {</span>
+<span class="nc" id="L182">                existingUser.setPassword(pwd);</span>
+            }
+            // Si la foto es null no se introduce en la base de datos ni como 0x
+<span class="nc bnc" id="L185" title="All 4 branches missed.">            if (updatedUser.getPhoto() == null || updatedUser.getPhoto().length == 0) {</span>
+<span class="nc" id="L186">                existingUser.setPhoto(null);</span>
+            } else {
+<span class="nc" id="L188">                existingUser.setPhoto(updatedUser.getPhoto());</span>
+            }
+<span class="nc" id="L190">            commonUserRepository.save(existingUser); // Guardar los cambios en el repositorio</span>
+<span class="nc" id="L191">        } else {</span>
+<span class="nc" id="L192">            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, &quot;El usuario a editar no existe&quot;);</span>
+        }
+<span class="nc" id="L194">    }</span>
+
+    /**
+     * Elimina a un usuario específico.
+     *
+     * @param userId ID del usuario a eliminar.
+     */
+    @Transactional
+    public void deleteUser(Long userId) {
+<span class="nc bnc" id="L203" title="All 2 branches missed.">        if (userExists(userId)) { // Validar que el usuario exista</span>
+<span class="nc" id="L204">            commonUserRepository.deleteById(userId);</span>
+        } else {
+<span class="nc" id="L206">            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, &quot;Usuario no encontrado&quot;);</span>
+        }
+<span class="nc" id="L208">    }</span>
+
+    /**
+     * Actualiza el estado de bloqueo de un usuario.
+     *
+     * @param user  Usuario a actualizar.
+     * @param block true para bloquear al usuario, false para desbloquear.
+     * @return true si el estado de bloqueo fue actualizado correctamente.
+     */
+    public boolean updateUserBlockedStatus(CommonUser user, boolean block) {
+<span class="fc bfc" id="L218" title="All 4 branches covered.">        if (user.isBlocked() &amp;&amp; block) { // Validar si el usuario ya está bloqueado y se intenta bloquear de nuevo</span>
+<span class="fc" id="L219">            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, &quot;El usuario ya está bloqueado.&quot;);</span>
+<span class="fc bfc" id="L220" title="All 4 branches covered.">        } else if (!user.isBlocked() &amp;&amp; !block) { // Validar si el usuario ya está desbloqueado y se intenta desbloquear de nuevo</span>
+<span class="fc" id="L221">            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, &quot;El usuario ya está desbloqueado.&quot;);</span>
+        } else {
+<span class="fc" id="L223">            user.setBlocked(block); // Actualizar el estado de bloqueo</span>
+        }
+<span class="fc" id="L225">        return true;</span>
+    }
+
+    /**
+     * Cancela o rechaza las reuniones en las que participa un usuario.
+     * Usado al bloquear a un usuario.
+     *
+     * @param user Usuario a cancelar o rechazar las reuniones.
+     */
+    /*  Este método no debería ir aquí. El problema es que si lo ponemos en MeetingService
+    estamos creando un ciclo para Springboot (no dejará ejecutar el back).
+
+    Básicamente, porque importaremos MeetingService en ManageUsersService y ManageUsersService en MeetingService.
+
+    Pero hay que darle una vuelta. Ahora mismo no van los tests
+    */
+    public void cancelOrRejectMeetings(CommonUser user) {
+<span class="nc" id="L242">        List&lt;Map&lt;String,Object&gt;&gt; meetings = meetingAttendanceRepository.findAllByUserId(user.getId()); // Obtener las reuniones en las que participa el usuario</span>
+<span class="nc bnc" id="L243" title="All 2 branches missed.">        for (Map&lt;String,Object&gt; meeting : meetings) {</span>
+<span class="nc" id="L244">            Meeting meetingAux = meetingRepository.findById((Long)meeting.get(&quot;id&quot;)).get();</span>
+<span class="nc" id="L245">            MeetingAttendance meetingAttendance = meetingAttendanceRepository.findByMeetingIdAndUserId((Long)meeting.get(&quot;id&quot;), user.getId());</span>
+<span class="nc bnc" id="L246" title="All 2 branches missed.">            if (meetingAttendance.getRole() == MeetingAttendance.Role.ORGANIZADOR) { // Si el usuario es organizador, se cancela la reunión</span>
+<span class="nc" id="L247">                meetingAux.setStatus(Meeting.Status.CANCELADA);</span>
+<span class="nc" id="L248">                meetingRepository.save(meetingAux);</span>
+            } else { // Si el usuario es asistente, se rechaza la invitación
+<span class="nc" id="L250">                meetingAttendance.setInvitationStatus(MeetingAttendance.InvitationStatus.RECHAZADA);</span>
+<span class="nc" id="L251">                meetingAttendance.setDeclineReason(&quot;Usuario bloqueado&quot;);</span>
+<span class="nc" id="L252">                meetingAttendanceRepository.save(meetingAttendance);</span>
+            }
+<span class="nc" id="L254">        }</span>
+<span class="nc" id="L255">    }</span>
+    
+    //ORIGINAL 
+    public void cancelOrRejectMeetingsAbsence(CreateAbsenceRequest absenceInfo){
+        LocalDateTime fromDateTime;
+        LocalDateTime toDateTime;
+<span class="nc bnc" id="L261" title="All 2 branches missed.">        if (absenceInfo.isAllDayLong()){</span>
+<span class="nc" id="L262">            fromDateTime = LocalDateTime.parse(absenceInfo.getFromDate() + &quot;T00:00&quot;);</span>
+<span class="nc" id="L263">            toDateTime = LocalDateTime.parse(absenceInfo.getToDate() + &quot;T23:59&quot;);</span>
+        }
+        else{
+<span class="nc" id="L266">            fromDateTime = LocalDateTime.parse(absenceInfo.getFromDate() + &quot;T&quot; + absenceInfo.getFromTime());</span>
+<span class="nc" id="L267">            toDateTime = LocalDateTime.parse(absenceInfo.getToDate() + &quot;T&quot; + absenceInfo.getToTime());</span>
+        }
+<span class="nc" id="L269">        List&lt;MeetingAttendance&gt; meetings = meetingAttendanceRepository.findAttendancesByUserIdAndPeriod(fromDateTime, toDateTime, absenceInfo.getUserId(), absenceInfo.isAllDayLong()); // Obtener las reuniones en las que participa el usuario</span>
+<span class="nc bnc" id="L270" title="All 2 branches missed.">        for (MeetingAttendance meetingAttendance : meetings) {</span>
+<span class="nc" id="L271">            Meeting meeting = meetingAttendance.getMeeting();</span>
+<span class="nc bnc" id="L272" title="All 2 branches missed.">            if (meetingAttendance.getRole() == MeetingAttendance.Role.ORGANIZADOR) { // Si el usuario es organizador, se cancela la reunión</span>
+<span class="nc" id="L273">                meeting.setStatus(Meeting.Status.CANCELADA);</span>
+<span class="nc" id="L274">                meetingRepository.save(meeting);</span>
+            } else { // Si el usuario es asistente, se rechaza la invitación
+<span class="nc" id="L276">                meetingAttendance.setInvitationStatus(MeetingAttendance.InvitationStatus.RECHAZADA);</span>
+<span class="nc" id="L277">                meetingAttendance.setDeclineReason(&quot;Ausencia programada&quot;);</span>
+<span class="nc" id="L278">                meetingAttendanceRepository.save(meetingAttendance);</span>
+            }
+<span class="nc" id="L280">        }</span>
+<span class="nc" id="L281">    }</span>
+    
+    //NUEVO CON INFO
+    public List&lt;String&gt; cancelOrRejectMeetingsAbsenceInfo(CreateAbsenceRequest absenceInfo) {
+<span class="nc" id="L285">        List&lt;String&gt; results = new ArrayList&lt;&gt;();</span>
+        LocalDateTime fromDateTime;
+        LocalDateTime toDateTime;
+
+<span class="nc bnc" id="L289" title="All 2 branches missed.">        if (absenceInfo.isAllDayLong()) {</span>
+<span class="nc" id="L290">            fromDateTime = LocalDateTime.parse(absenceInfo.getFromDate() + &quot;T00:00&quot;);</span>
+<span class="nc" id="L291">            toDateTime = LocalDateTime.parse(absenceInfo.getToDate() + &quot;T23:59&quot;);</span>
+        } else {
+<span class="nc" id="L293">            fromDateTime = LocalDateTime.parse(absenceInfo.getFromDate() + &quot;T&quot; + absenceInfo.getFromTime());</span>
+<span class="nc" id="L294">            toDateTime = LocalDateTime.parse(absenceInfo.getToDate() + &quot;T&quot; + absenceInfo.getToTime());</span>
+        }
+
+<span class="nc" id="L297">        List&lt;MeetingAttendance&gt; meetings = meetingAttendanceRepository.findAttendancesByUserIdAndPeriod(</span>
+<span class="nc" id="L298">            fromDateTime, toDateTime, absenceInfo.getUserId(), absenceInfo.isAllDayLong()</span>
+        );
+
+<span class="nc bnc" id="L301" title="All 2 branches missed.">        for (MeetingAttendance meetingAttendance : meetings) {</span>
+<span class="nc" id="L302">            Meeting meeting = meetingAttendance.getMeeting();</span>
+<span class="nc bnc" id="L303" title="All 2 branches missed.">            if (meetingAttendance.getRole() == MeetingAttendance.Role.ORGANIZADOR) {</span>
+<span class="nc" id="L304">                meeting.setStatus(Meeting.Status.CANCELADA);</span>
+<span class="nc" id="L305">                meetingRepository.save(meeting);</span>
+<span class="nc" id="L306">                results.add(&quot;Se ha cancelado la reunión: &quot; + meeting.getSubject());</span>
+            } else {
+<span class="nc" id="L308">                meetingAttendance.setInvitationStatus(MeetingAttendance.InvitationStatus.RECHAZADA);</span>
+<span class="nc" id="L309">                meetingAttendance.setDeclineReason(&quot;Ausencia programada&quot;);</span>
+<span class="nc" id="L310">                meetingAttendanceRepository.save(meetingAttendance);</span>
+<span class="nc" id="L311">                results.add(&quot;Se ha rechazado la reunión: &quot; + meeting.getSubject());</span>
+            }
+<span class="nc" id="L313">        }</span>
+<span class="nc" id="L314">        return results;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

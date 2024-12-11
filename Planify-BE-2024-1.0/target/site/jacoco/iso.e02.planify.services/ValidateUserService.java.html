@@ -1,0 +1,437 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ValidateUserService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.services</a> &gt; <span class="el_source">ValidateUserService.java</span></div><h1>ValidateUserService.java</h1><pre class="source lang-java linenums">package iso.e02.planify.services;
+
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import javax.imageio.ImageIO;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.logging.Logger;
+import java.util.logging.Level;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
+
+import iso.e02.planify.entities.Administrator;
+import iso.e02.planify.entities.AppUser;
+import iso.e02.planify.entities.CommonUser;
+import iso.e02.planify.requests.CreateAdminRequest;
+import iso.e02.planify.requests.RegisterRequest;
+import iso.e02.planify.entities.Credentials;
+import iso.e02.planify.repositories.UsersRepository;
+
+/**
+ * Servicio para validar y gestionar datos de usuarios y administradores,
+ * incluyendo validaciones de email, fecha de registro, contraseñas, y
+ * creación de entidades de usuario con atributos específicos.
+ */
+
+@Service
+<span class="fc" id="L45">public class ValidateUserService {</span>
+
+    @Autowired
+    private ManageUsersService manageUsersService;
+
+    @Autowired
+    private UsersRepository usersRepository;
+
+    /**
+     * Logger para la clase EmailSMTP.
+     */
+<span class="fc" id="L56">    private static final Logger LOGGER = Logger.getLogger(ValidateUserService.class.getName());</span>
+
+<span class="fc" id="L58">    private String emailFormat = &quot;^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$&quot;; // Expresión regular para validar</span>
+                                                                                      // emails
+<span class="fc" id="L60">    private DateTimeFormatter registrationDateFormat = DateTimeFormatter.ofPattern(&quot;yyyy-MM-dd&quot;); // Formato de fecha de</span>
+                                                                                                  // alta
+<span class="fc" id="L62">    private BCryptPasswordEncoder pwdHashing = new BCryptPasswordEncoder(); // Codificador de contraseñas</span>
+
+    /**
+     * Valida la información del usuario. Comprueba que los campos obligatorios
+     * estén rellenados,
+     * que el email tenga un formato válido, que las contraseñas coincidan y que la
+     * contraseña sea segura.
+     * 
+     * @param userInfo petición https como objeto
+     * 
+     * @return true si pasa todas las validaciones, false en caso contrario
+     */
+    public boolean validateUserInfo(RegisterRequest userInfo) {
+<span class="fc" id="L75">        validateRequiredFields(userInfo);</span>
+<span class="fc" id="L76">        isValidEmail(userInfo.getEmail());</span>
+<span class="fc" id="L77">        isValidRegistrationDate(userInfo.getRegistrationDate());</span>
+<span class="fc" id="L78">        doPasswordsMatch(userInfo.getPassword(), userInfo.getConfirmPassword());</span>
+<span class="fc" id="L79">        isPasswordSecure(userInfo.getPassword());</span>
+<span class="fc" id="L80">        return true;</span>
+    }
+
+    /**
+     * Valida la información del usuario en una edición. Comprueba que los campos
+     * obligatorios
+     * estén rellenado y que la fecha sea válida. Además, si también se cambia la
+     * contraseña comprueba
+     * que las contraseñas coincidan y que sea segura.
+     * 
+     * @param userInfo petición https como objeto
+     * 
+     * @return true si pasa todas las validaciones, false en caso contrario
+     */
+    public boolean validateUserInfoEdit(RegisterRequest userInfo) {
+        // Validaciones obligatorias
+<span class="fc" id="L96">        validateRequiredFieldsForEdit(userInfo);</span>
+<span class="fc" id="L97">        isValidRegistrationDate(userInfo.getRegistrationDate());</span>
+
+        // Validaciones opcionales. Se realizan si hay cambio en la pwd
+<span class="fc" id="L100">        String pwd = userInfo.getPassword();</span>
+<span class="fc bfc" id="L101" title="All 4 branches covered.">        if (pwd != null &amp;&amp; !pwd.trim().isEmpty()) {</span>
+<span class="fc" id="L102">            doPasswordsMatch(pwd, userInfo.getConfirmPassword());</span>
+<span class="fc" id="L103">            isPasswordSecure(pwd);</span>
+        }
+<span class="fc" id="L105">        return true;</span>
+    }
+
+    /**
+     * Valida la información del administrador. Comprueba que el email tenga un
+     * formato válido, que las contraseñas coincidan y que la contraseña sea segura.
+     *
+     * @param adminInfo petición https como objeto
+     * @return true si pasa todas las validaciones, false en caso contrario
+     */
+
+    public boolean validateAdminInfo(CreateAdminRequest adminInfo) {
+<span class="fc" id="L117">        isValidEmail(adminInfo.getEmail());</span>
+<span class="fc" id="L118">        doPasswordsMatch(adminInfo.getPassword(), adminInfo.getConfirmPassword());</span>
+<span class="fc" id="L119">        isPasswordSecure(adminInfo.getPassword());</span>
+<span class="fc" id="L120">        return true;</span>
+    }
+
+    /**
+     * Valida que todos los campos requeridos no sean nulos ni estén vacíos.
+     * 
+     * @param userInfo petición https como objeto
+     * 
+     * @return true si toddo está rellenado, false en caso contrario
+     */
+    public boolean validateRequiredFields(RegisterRequest userInfo) {
+<span class="fc" id="L131">        validateNotNull(userInfo.getName(), &quot;nombre&quot;);</span>
+<span class="fc" id="L132">        validateNotNull(userInfo.getSurnames(), &quot;apellidos&quot;);</span>
+<span class="fc" id="L133">        validateNotNull(userInfo.getCentre(), &quot;centro&quot;);</span>
+<span class="fc" id="L134">        validateNotNull(userInfo.getRegistrationDate(), &quot;fecha de alta&quot;);</span>
+<span class="fc" id="L135">        validateNotNull(userInfo.getEmail(), &quot;email&quot;);</span>
+<span class="fc" id="L136">        validateNotNull(userInfo.getPassword(), &quot;contraseña&quot;);</span>
+<span class="fc" id="L137">        validateNotNull(userInfo.getConfirmPassword(), &quot;confirmación de la contraseña&quot;);</span>
+<span class="fc" id="L138">        return true;</span>
+    }
+
+    /**
+     * Valida que todos los campos requeridos en una edición no sean nulos ni estén
+     * vacíos.
+     * 
+     * @param userInfo petición https como objeto
+     * 
+     * @return true si toddo está rellenado, false en caso contrario
+     */
+    public boolean validateRequiredFieldsForEdit(RegisterRequest userInfo) {
+<span class="fc" id="L150">        validateNotNull(userInfo.getName(), &quot;nombre&quot;);</span>
+<span class="fc" id="L151">        validateNotNull(userInfo.getSurnames(), &quot;apellidos&quot;);</span>
+<span class="fc" id="L152">        validateNotNull(userInfo.getCentre(), &quot;centro&quot;);</span>
+<span class="fc" id="L153">        validateNotNull(userInfo.getRegistrationDate(), &quot;fecha de alta&quot;);</span>
+<span class="fc" id="L154">        validateNotNull(userInfo.getEmail(), &quot;email&quot;);</span>
+<span class="fc" id="L155">        return true;</span>
+    }
+
+    /**
+     * Valida que un campo no sea nulo ni esté vacío.
+     * 
+     * @param field     El valor del campo.
+     * @param fieldName El nombre del campo (para mensajes de error).
+     */
+    private void validateNotNull(String field, String fieldName) {
+<span class="fc bfc" id="L165" title="All 4 branches covered.">        if (field == null || field.trim().isEmpty()) {</span>
+<span class="fc" id="L166">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;El campo \&quot;&quot; + fieldName + &quot;\&quot; es obligatorio.&quot;);
+        }
+<span class="fc" id="L169">    }</span>
+
+    /**
+     * Comprueba si la fecha de alta tiene un formato válido.
+     * El formato válido de una fecha de alta en Planify es yyyy-MM-dd.
+     * La fecha de alta debe ser al menos en el año 2024 y anterior al día de hoy.
+     * 
+     * @param registrationDate la fecha de alta a comprobar.
+     * @return true si la fecha de alta tiene un formato válido, false en caso
+     *         contrario.
+     */
+    public boolean isValidRegistrationDate(String registrationDate) {
+        try {
+<span class="fc" id="L182">            LocalDate userDate = parseRegistrationDate(registrationDate);</span>
+<span class="fc bfc" id="L183" title="All 2 branches covered.">            if (userDate.isBefore(LocalDate.of(2024, 1, 1))) {</span>
+<span class="fc" id="L184">                throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                        &quot;La fecha de alta debe ser al menos en el año 2024.&quot;);
+            }
+
+<span class="fc bfc" id="L188" title="All 2 branches covered.">            if (userDate.isAfter(LocalDate.now())) {</span>
+<span class="fc" id="L189">                throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                        &quot;La fecha de alta no puede ser posterior al día de hoy.&quot;);
+            }
+<span class="fc" id="L192">        } catch (DateTimeParseException e) {</span>
+<span class="fc" id="L193">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;La fecha de alta no tiene un formato válido. Se esperaba 'yyyy-MM-dd'.&quot;);
+<span class="fc" id="L195">        }</span>
+<span class="fc" id="L196">        return true;</span>
+    }
+
+    /**
+     * Comprueba si el email proporcionado tiene un formato válido.
+     * El formato válido de un email en Planify es xxx@planify.com.
+     * 
+     * @param email el email a comprobar.
+     * @return true si el email tiene un formato válido, false en caso contrario.
+     */
+    public boolean isValidEmail(String email) {
+
+<span class="fc" id="L208">        Pattern pattern = Pattern.compile(this.emailFormat); // Compilar la expresión regular</span>
+<span class="fc" id="L209">        Matcher matcher = pattern.matcher(email); // Crear un matcher a partir del email proporcionado</span>
+
+        // Comprobar si el email cumple con la expresión regular
+<span class="fc bfc" id="L212" title="All 2 branches covered.">        if (!matcher.matches()) {</span>
+<span class="fc" id="L213">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;El formato del email no es el correcto: \&quot;texto@texto.texto.\&quot;&quot;);
+        }
+<span class="fc" id="L216">        return true;</span>
+    }
+
+    /**
+     * Comprueba si las contraseñas coinciden.
+     * 
+     * @param password        contraseña
+     * @param confirmPassword contraseña para verificar que coinciden
+     * 
+     * @return true si coinciden, false en caso contrario.
+     */
+    public boolean doPasswordsMatch(String password, String confirmPassword) {
+<span class="fc bfc" id="L228" title="All 2 branches covered.">        if (!password.equals(confirmPassword)) {</span>
+<span class="fc" id="L229">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE, &quot;Las contraseñas no coinciden.&quot;);</span>
+        }
+<span class="fc" id="L231">        return true;</span>
+    }
+
+    /**
+     * Comprueba si la contraseña proporcionada cumple con las políticas de
+     * seguridad.
+     * Al menos 8 caracteres, 1 minúscula, 1 mayúsculas, 1 número y 1 carácter
+     * especial.
+     * 
+     * @param password la contraseña a comprobar.
+     * @return true si la contraseña es segura, false en caso contrario.
+     */
+    public boolean isPasswordSecure(String password) {
+
+<span class="fc" id="L245">        Pattern upperCasePattern = Pattern.compile(&quot;[A-ZÁÉÍÓÚÑÄËÏÖÜÀÈÌÒÙÇ]&quot;); // Al menos una mayúscula</span>
+<span class="fc" id="L246">        Pattern lowerCasePattern = Pattern.compile(&quot;[a-záéíóúñäëïöüàèìòùç]&quot;); // Al menos una minúscula</span>
+<span class="fc" id="L247">        Pattern digitPattern = Pattern.compile(&quot;\\d&quot;); // Al menos un dígito</span>
+<span class="fc" id="L248">        Pattern specialCharPattern = Pattern.compile(&quot;[!@#$%^&amp;*(),.?\&quot;:¿'¡+{}|&lt;&gt;_\\-/\\\\=\\[\\]`;ºª~€¬¨]&quot;); // Al menos</span>
+                                                                                                             // un
+                                                                                                             // carácter
+                                                                                                             // especial
+
+        // Verificar cada uno de los patrones
+<span class="fc bfc" id="L254" title="All 4 branches covered.">        if (password.length() &lt; 8 || !upperCasePattern.matcher(password).find()</span>
+<span class="fc bfc" id="L255" title="All 2 branches covered.">                || !lowerCasePattern.matcher(password).find() ||</span>
+<span class="fc bfc" id="L256" title="All 4 branches covered.">                !digitPattern.matcher(password).find() || !specialCharPattern.matcher(password).find()) {</span>
+<span class="fc" id="L257">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;La contraseña incumple con la política de seguridad. La contraseña debe tener una mayúscula, una minúscula, un número, un carácter especial y al menos 8 caracteres.&quot;);
+        }
+
+<span class="fc" id="L261">        return true; // Si pasa todas las comprobaciones, es segura</span>
+    }
+
+    /**
+     * Devuelve el hash obtenido a partir de una contraseña.
+     * 
+     * @param password la contraseña
+     * @return el hash de la contraseña
+     */
+    public String hashPassword(String password) {
+<span class="fc" id="L271">        return this.pwdHashing.encode(password);</span>
+    }
+
+    /**
+     * Compara hashes de dos contraseñas.
+     * 
+     * @param rawPassword     la contraseña a codificar y comparar
+     * @param encodedPassword el hash de la contraseña almacenada
+     * 
+     * @return true si los hashes coinciden, false en caso contrario
+     */
+    public boolean doHashesMatch(String rawPassword, String encodedPassword) {
+<span class="fc" id="L283">        return this.pwdHashing.matches(rawPassword, encodedPassword);</span>
+    }
+
+    /**
+     * Crea un token UUID
+     * 
+     * @return token único y universal
+     */
+    public String createToken() {
+<span class="fc" id="L292">        return UUID.randomUUID().toString();</span>
+    }
+
+    /**
+     * Obtiene un usuario común a partir de la petición HTTPS ya validada en forma
+     * de objeto.
+     * 
+     * @param validatedUserInfo la petición HTTPS en forma de objeto ya validada en
+     *                          cuanto a formato.
+     * 
+     * @return el usuario
+     */
+    public CommonUser toCommonUser(RegisterRequest validatedUserInfo) {
+
+<span class="nc" id="L306">        CommonUser user = new CommonUser();</span>
+
+<span class="nc" id="L308">        user.setName(validatedUserInfo.getName());</span>
+<span class="nc" id="L309">        user.setSurnames(validatedUserInfo.getSurnames());</span>
+<span class="nc" id="L310">        user.setCentre(validatedUserInfo.getCentre());</span>
+<span class="nc" id="L311">        user.setRegistrationDate(parseRegistrationDate(validatedUserInfo.getRegistrationDate()));</span>
+<span class="nc bnc" id="L312" title="All 4 branches missed.">        user.setDepartment(validatedUserInfo.getDepartment() == null || validatedUserInfo.getDepartment().equals(&quot;&quot;) ? null : validatedUserInfo.getDepartment());</span>
+<span class="nc bnc" id="L313" title="All 4 branches missed.">        user.setProfile(validatedUserInfo.getProfile() == null || validatedUserInfo.getProfile().equals(&quot;&quot;) ? null : validatedUserInfo.getProfile());</span>
+        // redimensionar y comprimir la imagen antes de guardarla a 150px x 150px ya que
+        // es como la mostramos en el front
+<span class="nc bnc" id="L316" title="All 2 branches missed.">        if (validatedUserInfo.getPhoto() != null) {</span>
+
+            try {
+<span class="nc" id="L319">                user.setPhoto(resizeAndCompressImageFromBytes(validatedUserInfo.getPhoto(), 150, 150));</span>
+<span class="nc" id="L320">            } catch (IOException e) {</span>
+<span class="nc" id="L321">                LOGGER.log(Level.SEVERE, &quot;Error al redimensionar y comprimir la imagen&quot;, e);</span>
+<span class="nc" id="L322">            }</span>
+        }
+
+<span class="nc" id="L325">        user.setEmail(validatedUserInfo.getEmail());</span>
+<span class="nc bnc" id="L326" title="All 4 branches missed.">        if (validatedUserInfo.getPassword() != null &amp;&amp; !validatedUserInfo.getPassword().trim().isEmpty()) {</span>
+<span class="nc" id="L327">            user.setPassword(hashPassword(validatedUserInfo.getPassword()));</span>
+        }
+<span class="nc" id="L329">        return user;</span>
+    }
+
+    /**
+     * Convierte una solicitud de creación de administrador en un objeto
+     * Administrator
+     * 
+     * @param validatedUserInfo información del administrador validada en forma de
+     *                          objeto
+     * @return Administrator configurado con la información proporcionada
+     */
+
+    public Administrator toAdmin(CreateAdminRequest validatedUserInfo) {
+<span class="nc" id="L342">        Administrator user = new Administrator();</span>
+
+<span class="nc" id="L344">        user.setName(validatedUserInfo.getName());</span>
+<span class="nc" id="L345">        user.setSurnames(validatedUserInfo.getSurnames());</span>
+<span class="nc" id="L346">        user.setCentre(validatedUserInfo.getCentre());</span>
+<span class="nc" id="L347">        user.setEmail(validatedUserInfo.getEmail());</span>
+        // redimensionar y comprimir la imagen antes de guardarla a 150px x 150px ya que
+        // es como la mostramos en el front
+<span class="nc bnc" id="L350" title="All 2 branches missed.">        if (validatedUserInfo.getPhoto() != null) {</span>
+
+            try {
+<span class="nc" id="L353">                user.setPhoto(resizeAndCompressImageFromBytes(validatedUserInfo.getPhoto(), 150, 150));</span>
+<span class="nc" id="L354">            } catch (IOException e) {</span>
+<span class="nc" id="L355">                LOGGER.log(Level.SEVERE, &quot;Error al redimensionar y comprimir la imagen&quot;, e);</span>
+<span class="nc" id="L356">            }</span>
+        }
+
+<span class="nc" id="L359">        Credentials credentials = new Credentials();</span>
+<span class="nc" id="L360">        credentials.setPassword(hashPassword(validatedUserInfo.getPassword()));</span>
+<span class="nc" id="L361">        user.setCredentials(credentials);</span>
+<span class="nc" id="L362">        user.setInternal(validatedUserInfo.getInterno());</span>
+
+<span class="nc" id="L364">        return user;</span>
+    }
+
+    /**
+     * Convierte una cadena en una fecha.
+     * 
+     * @param registrationDate fecha en formato de cadena
+     * 
+     * @return fecha formateada
+     */
+    private LocalDate parseRegistrationDate(String registrationDate) {
+<span class="fc" id="L375">        return LocalDate.parse(registrationDate, this.registrationDateFormat);</span>
+    }
+
+    public static byte[] resizeAndCompressImageFromBytes(byte[] imageBytes, int targetWidth, int targetHeight)
+            throws IOException {
+
+<span class="nc bnc" id="L381" title="All 2 branches missed.">        if (imageBytes == null) {</span>
+<span class="nc" id="L382">            throw new IllegalArgumentException(&quot;imageBytes cannot be null&quot;);</span>
+        }
+        // Leer la imagen desde los bytes
+<span class="nc" id="L385">        BufferedImage originalImage = ImageIO.read(new ByteArrayInputStream(imageBytes));</span>
+
+        // Redimensionar la imagen
+<span class="nc" id="L388">        Image resizedImage = originalImage.getScaledInstance(targetWidth, targetHeight, Image.SCALE_SMOOTH);</span>
+<span class="nc" id="L389">        BufferedImage bufferedResizedImage = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);</span>
+
+        // Dibujar la imagen redimensionada en el BufferedImage
+<span class="nc" id="L392">        Graphics2D g2d = bufferedResizedImage.createGraphics();</span>
+<span class="nc" id="L393">        g2d.drawImage(resizedImage, 0, 0, null);</span>
+<span class="nc" id="L394">        g2d.dispose();</span>
+
+        // Comprimir la imagen y convertirla a un byte[]
+<span class="nc" id="L397">        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();</span>
+<span class="nc" id="L398">        ImageIO.write(bufferedResizedImage, &quot;jpg&quot;, byteArrayOutputStream); // Cambia &quot;jpg&quot; por el formato que necesites</span>
+
+        // Devolver los bytes de la imagen comprimida
+<span class="nc" id="L401">        return byteArrayOutputStream.toByteArray();</span>
+    }
+
+    public String validateJWT(String jwt) {
+<span class="nc bnc" id="L405" title="All 2 branches missed.">        if (jwt.startsWith(&quot;Bearer &quot;)) {</span>
+<span class="nc" id="L406">            jwt = jwt.replace(&quot;Bearer &quot;, &quot;&quot;);</span>
+        }
+        try {
+<span class="nc" id="L409">            return JWT.require(Algorithm.HMAC256(System.getProperty(&quot;JWT_SECRET&quot;)))</span>
+<span class="nc" id="L410">                    .build()</span>
+<span class="nc" id="L411">                    .verify(jwt)</span>
+<span class="nc" id="L412">                    .getSubject();</span>
+<span class="nc" id="L413">        } catch (com.auth0.jwt.exceptions.JWTVerificationException e) {</span>
+<span class="nc" id="L414">            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, &quot;Token JWT no válido o expirado.&quot;);</span>
+        }
+    }
+
+    public boolean validateCommonUserExist(Long userId) {
+<span class="nc bnc" id="L419" title="All 2 branches missed.">        if (!this.manageUsersService.userExists(userId)) {</span>
+<span class="nc" id="L420">            throw new ResponseStatusException(HttpStatus.NOT_FOUND, &quot;El usuario no existe.&quot;);</span>
+        }
+<span class="nc" id="L422">        return true;</span>
+    }
+
+     public boolean validateAccess(String authorizationHeader, long userId) {
+<span class="nc" id="L426">        String email = validateJWT(authorizationHeader);</span>
+<span class="nc" id="L427">        Optional&lt;AppUser&gt; userOpt = usersRepository.findByEmail(email);</span>
+<span class="nc" id="L428">        AppUser user = userOpt.get();</span>
+
+<span class="nc bnc" id="L430" title="All 4 branches missed.">        if (user.getId() != userId &amp;&amp; user instanceof CommonUser) {</span>
+<span class="nc" id="L431">            throw new ResponseStatusException(HttpStatus.FORBIDDEN, &quot;No tienes permiso para acceder a esta información.&quot;);</span>
+        }
+<span class="nc" id="L433">        return true;</span>
+    }
+    
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

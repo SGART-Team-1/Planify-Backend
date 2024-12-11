@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Recuperación de Contraseña</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f4f4f4;
+      }
+      .container {
+        width: 100%;
+        max-width: 600px;
+        margin: 0 auto;
+        background: #ffffff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      .header {
+        text-align: center;
+        padding-bottom: 20px;
+      }
+      .header h1 {
+        color: #333;
+        margin: 0;
+      }
+      .content {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .content p {
+        color: #555;
+        font-size: 16px;
+        line-height: 1.5;
+      }
+      .button {
+        display: inline-block;
+        padding: 15px 30px;
+        font-size: 16px;
+        color: #ffffff !important; /* Asegura que el texto se mantenga en blanco */
+        background-color: #000000;
+        text-decoration: none;
+        border-radius: 5px;
+        margin-top: 20px;
+      }
+      .button:visited,
+      .button:active,
+      .button:hover {
+        color: #ffffff !important; /* Mantén el color en todos los estados */
+        background-color: #0e91e9;
+      }
+      .ii a[href] {
+        color: #f4f4f4;
+      }
+      .footer {
+        text-align: center;
+        font-size: 14px;
+        color: #888;
+        padding-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Recuperaci&oacute;n de Contrase&ntilde;a</h1>
+      </div>
+      <div class="content">
+        <p>Hola ${userEmail},</p>
+        <p>
+          Recibimos una solicitud para restablecer la contrase&ntilde;a de tu
+          cuenta. Si fuiste t&uacute; quien hizo esta solicitud, haz clic en el
+          bot&oacute;n de abajo para restablecer tu contrase&ntilde;a,
+          v&aacute;lido durante 5 minutos:
+        </p>
+        <a href="${resetLink}" class="button">Restablecer Contrase&ntilde;a</a>
+        <p>
+          Si no solicitaste el restablecimiento de tu contrase&ntilde;a, por
+          favor ignora este correo.
+        </p>
+      </div>
+      <div class="footer">
+        <p>&copy; [2024] Planify. Todos los derechos reservados.</p>
+      </div>
+    </div>
+  </body>
+</html>

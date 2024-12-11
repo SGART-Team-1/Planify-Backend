@@ -1,0 +1,535 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ValidateMeetingService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.services</a> &gt; <span class="el_source">ValidateMeetingService.java</span></div><h1>ValidateMeetingService.java</h1><pre class="source lang-java linenums">package iso.e02.planify.services;
+
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+import iso.e02.planify.entities.Absence;
+import iso.e02.planify.entities.CommonUser;
+import iso.e02.planify.entities.Meeting;
+import iso.e02.planify.entities.MeetingAttendance;
+import iso.e02.planify.entities.Schedule;
+import iso.e02.planify.entities.Meeting.Location;
+import iso.e02.planify.entities.Meeting.Status;
+import iso.e02.planify.entities.MeetingAttendance.InvitationStatus;
+import iso.e02.planify.requests.ChangeMeetingInvitationStatusRequest;
+import iso.e02.planify.requests.CreateMeetingRequest;
+
+@Service
+<span class="fc" id="L29">public class ValidateMeetingService {</span>
+
+    @Autowired
+    private ManageUsersService manageUsersService;
+
+    @Autowired
+    private MeetingService meetingService;
+
+    @Autowired
+    private AbsencesService absencesService;
+
+    @Autowired
+    private WorkScheduleService workScheduleService;
+
+<span class="fc" id="L43">    private DateTimeFormatter dateTimeFormat = DateTimeFormatter.ofPattern(&quot;yyyy-MM-dd HH:mm&quot;); // Formato de fecha y</span>
+                                                                                                // hora
+
+<span class="fc" id="L46">    private DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern(&quot;yyyy-MM-dd&quot;); // Formato de fecha</span>
+
+<span class="fc" id="L48">    private DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern(&quot;HH:mm&quot;); // Formato de hora</span>
+
+    public boolean validateMeetingInfo(CreateMeetingRequest meetingInfo) {
+        // Comprobar datos generales
+<span class="fc" id="L52">        validateRequiredFields(meetingInfo);</span>
+<span class="fc" id="L53">        isValidDate(meetingInfo.getDate());</span>
+        // Comprobar isAllDayLong/DateTime
+<span class="fc bfc" id="L55" title="All 2 branches covered.">        if (!meetingInfo.isAllDayLong()) {</span>
+<span class="fc" id="L56">            isValidTime(meetingInfo.getFromTime(), meetingInfo.getToTime());</span>
+<span class="fc" id="L57">            validateWithSchedule(meetingInfo.getFromTime(), meetingInfo.getToTime());</span>
+        }
+        // Comprobar si es una ubicación del desplegable. Location sería al final un
+        // enum
+<span class="fc bfc" id="L61" title="All 2 branches covered.">        if (!meetingInfo.isOnline()) {</span>
+<span class="fc" id="L62">            isValidLocation(meetingInfo.getLocation());</span>
+        }
+<span class="fc" id="L64">        return true;</span>
+    }
+
+    /**
+     * Valida que todos los campos requeridos no sean nulos ni estén vacíos.
+     * 
+     * @param meetingInfo petición https como objeto
+     * 
+     * @return true si toddo está rellenado, false en caso contrario
+     *
+     */
+    public boolean validateRequiredFields(CreateMeetingRequest meetingInfo) {
+<span class="fc" id="L76">        validateNotNull(meetingInfo.getSubject(), &quot;asunto&quot;);</span>
+<span class="fc" id="L77">        validateNotNull(meetingInfo.isAllDayLong(), &quot;día completo&quot;);</span>
+<span class="fc" id="L78">        validateNotNull(meetingInfo.getDate(), &quot;fecha&quot;);</span>
+<span class="fc" id="L79">        validateNotNull(meetingInfo.isOnline(), &quot;online&quot;);</span>
+<span class="fc" id="L80">        validateNotNull(meetingInfo.getParticipants(), &quot;participantes&quot;);</span>
+
+        // Comprobación de reunión de día completo
+<span class="fc bfc" id="L83" title="All 2 branches covered.">        if (meetingInfo.isAllDayLong()) {</span>
+<span class="fc" id="L84">            meetingInfo.setFromTime(null);</span>
+<span class="fc" id="L85">            meetingInfo.setToTime(null);</span>
+        } else {
+<span class="fc" id="L87">            validateNotNull(meetingInfo.getFromTime(), &quot;inicio&quot;);</span>
+<span class="fc" id="L88">            validateNotNull(meetingInfo.getToTime(), &quot;fin&quot;);</span>
+        }
+
+        // Comprobación de reunión online
+<span class="fc bfc" id="L92" title="All 2 branches covered.">        if (meetingInfo.isOnline()) {</span>
+<span class="fc" id="L93">            meetingInfo.setLocation(null);</span>
+        } else {
+<span class="fc" id="L95">            validateNotNull(meetingInfo.getLocation(), &quot;localización&quot;);</span>
+        }
+
+<span class="fc" id="L98">        return true;</span>
+    }
+
+    /**
+     * Valida que un campo no sea nulo ni esté vacío.
+     * 
+     * @param field     El valor del campo.
+     * @param fieldName El nombre del campo (para mensajes de error).
+     */
+    public void validateNotNull(Object field, String fieldName) {
+<span class="fc bfc" id="L108" title="All 4 branches covered.">        if (field == null ||</span>
+<span class="fc bfc" id="L109" title="All 4 branches covered.">                (field instanceof String &amp;&amp; ((String) field).trim().isEmpty()) ||</span>
+<span class="fc bfc" id="L110" title="All 2 branches covered.">                (field instanceof List &amp;&amp; ((List&lt;?&gt;) field).isEmpty())) {</span>
+<span class="fc" id="L111">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;El campo \&quot;&quot; + fieldName + &quot;\&quot; es obligatorio.&quot;);
+        }
+<span class="fc" id="L114">    }</span>
+
+    /**
+     * Comprueba si la fecha es válida. Debe ser al menos en el año 2024 y anterior
+     * a hoy.
+     * 
+     * @param dateStr la fecha a comprobar
+     * 
+     * @return true si la fecha es correcta, false en caso contrario.
+     */
+    public boolean isValidDate(String dateStr) {
+        try {
+<span class="fc" id="L126">            LocalDate date = parseDate(dateStr);</span>
+
+<span class="fc bfc" id="L128" title="All 2 branches covered.">            if (date.isBefore(LocalDate.of(2024, 1, 1))) {</span>
+<span class="fc" id="L129">                throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                        &quot;La fecha de la reunión debe ser al menos en el año 2024.&quot;);
+            }
+
+<span class="fc bfc" id="L133" title="All 2 branches covered.">            if (date.compareTo(LocalDate.now()) &lt;= 0) {</span>
+<span class="fc" id="L134">                throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                        &quot;La fecha de la reunión debe ser posterior a hoy.&quot;);
+            }
+
+<span class="pc bpc" id="L138" title="2 of 4 branches missed.">            if (date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY) {</span>
+<span class="nc" id="L139">                throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;La fecha de la reunión no puede ser en fin de semana.&quot;);
+            }
+
+<span class="fc" id="L143">        } catch (DateTimeParseException e) {</span>
+<span class="fc" id="L144">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;La fecha de la reunión no tiene un formato válido. Se esperaba 'yyyy-MM-dd'.&quot;);
+<span class="fc" id="L146">        }</span>
+<span class="fc" id="L147">        return true;</span>
+    }
+
+    /**
+     * Comprueba si las horas de inicio y fin son válidas. La hora de inicio debe
+     * ser anterior a la hora de fin y la duración
+     * de la reunión debe ser al menos de 30 minutos.
+     * 
+     * @param fromTimeStr la hora de inicio
+     * 
+     * @return true si la fecha es correcta, false en caso contrario.
+     */
+    public boolean isValidTime(String fromTimeStr, String toTimeStr) {
+        try {
+<span class="fc" id="L161">            LocalTime fromTime = parseTime(fromTimeStr);</span>
+<span class="fc" id="L162">            LocalTime toTime = parseTime(toTimeStr);</span>
+
+<span class="pc bpc" id="L164" title="1 of 2 branches missed.">            if (fromTime.isAfter(toTime)) {</span>
+<span class="nc" id="L165">                throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                        &quot;La hora de inicio de la reunión debe ser anterior a la hora de fin.&quot;);
+            }
+
+<span class="fc bfc" id="L169" title="All 2 branches covered.">            if (fromTime.until(toTime, ChronoUnit.MINUTES) &lt; 30) {</span>
+<span class="fc" id="L170">                throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                        &quot;La duración mínima entre la hora de inicio y la hora de fin debe ser al menos de 30 minutos.&quot;);
+            }
+<span class="fc" id="L173">        } catch (DateTimeParseException e) {</span>
+<span class="fc" id="L174">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;La hora no tiene un formato válido. Se esperaba 'HH:mm'.&quot;);
+<span class="fc" id="L176">        }</span>
+<span class="fc" id="L177">        return true;</span>
+    }
+
+    /**
+     * Convierte una cadena en una fecha y hora
+     * 
+     * @param dateStr fecha en formato de cadena
+     * @param timeStr hora en formato de cadena
+     * 
+     * @return fecha y hora formateada
+     */
+    public LocalDateTime parseDateTime(String dateStr, String timeStr) {
+<span class="fc" id="L189">        return LocalDateTime.parse(dateStr + &quot; &quot; + timeStr, this.dateTimeFormat);</span>
+    }
+
+    /**
+     * Convierte una cadena en una fecha
+     * 
+     * @param dateStr fecha en formato de cadena
+     * @return objeto LocalDate formateado
+     */
+    public LocalDate parseDate(String dateStr) {
+<span class="fc" id="L199">        return LocalDate.parse(dateStr, this.dateFormat);</span>
+    }
+
+    /**
+     * Convierte una cadena en una fecha
+     * 
+     * @param timeStr fecha en formato de cadena
+     * @return objeto LocalTime formateado
+     */
+    public LocalTime parseTime(String timeStr) {
+<span class="fc" id="L209">        return LocalTime.parse(timeStr, this.timeFormat);</span>
+    }
+
+    /**
+     * Comprueba si una cadena pertenece a un valor del Enum Location
+     * 
+     * @param locationStr la ubicación de la reunión
+     * 
+     * @return true si la cadena de la ubicación es un valor del Enum, false en caso
+     *         contrario
+     */
+    public boolean isValidLocation(String locationStr) {
+        try {
+<span class="fc" id="L222">            Location.valueOf(locationStr.toUpperCase());</span>
+<span class="fc" id="L223">        } catch (IllegalArgumentException e) {</span>
+<span class="fc" id="L224">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;La reunión no puede tener la ubicación \&quot;&quot; + locationStr + &quot;\&quot;.&quot;);
+<span class="fc" id="L226">        }</span>
+<span class="fc" id="L227">        return true;</span>
+    }
+
+    public boolean validateWithSchedule(String fromTimeStr, String toTimeStr) {
+        // Obtener las horas de la reunión
+<span class="fc" id="L232">        LocalTime fromTime = parseTime(fromTimeStr);</span>
+<span class="fc" id="L233">        LocalTime toTime = parseTime(toTimeStr);</span>
+<span class="fc" id="L234">        List&lt;Schedule&gt; workSchedule = workScheduleService.getWorkSchedule();</span>
+        // Validar
+<span class="fc" id="L236">        return validateWithSchedule(fromTime, toTime, workSchedule);</span>
+
+    }
+
+    public boolean validateWithSchedule(LocalTime fromTime, LocalTime toTime, List&lt;Schedule&gt; workSchedule) {
+        // Verificar que exista al menos un bloque de horario laboral
+<span class="fc bfc" id="L242" title="All 2 branches covered.">		if (workSchedule.isEmpty()) {</span>
+<span class="fc" id="L243">			throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE, &quot;No hay horarios laborales configurados.&quot;);</span>
+		}
+	
+		// Determinar el rango general del horario laboral
+<span class="fc" id="L247">		LocalTime earliestStart = workSchedule.get(0).getStartHour();</span>
+<span class="fc" id="L248">		LocalTime latestEnd = workSchedule.get(workSchedule.size() - 1).getEndHour();</span>
+				
+		// Verificar que la reunión esté dentro del rango general del horario laboral
+<span class="fc bfc" id="L251" title="All 4 branches covered.">		if (fromTime.isBefore(earliestStart) || toTime.isAfter(latestEnd)) {</span>
+<span class="fc" id="L252">			throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE, &quot;La reunión no está dentro del rango del horario laboral.&quot;);</span>
+		}
+	
+		// Verificar solapamiento con al menos un bloque del horario laboral
+        
+<span class="fc" id="L257">		boolean isInsideAnyBlock = workSchedule.stream().anyMatch(schedule -&gt; {</span>
+<span class="fc" id="L258">			LocalTime scheduleStart = schedule.getStartHour();</span>
+<span class="fc" id="L259">			LocalTime scheduleEnd = schedule.getEndHour();</span>
+	
+			// Verificar solapamiento
+<span class="fc bfc" id="L262" title="All 4 branches covered.">			return fromTime.compareTo(scheduleStart) &gt;= 0 &amp;&amp; toTime.compareTo(scheduleEnd) &lt;= 0;</span>
+		});
+	
+<span class="fc bfc" id="L265" title="All 2 branches covered.">        if (!isInsideAnyBlock) {</span>
+<span class="fc" id="L266">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;La reunión se solapa con algún bloque del horario laboral.&quot;);
+        }
+<span class="fc" id="L269">        return true;</span>
+    }
+
+    public boolean validateParticipants(Meeting meeting, CommonUser organizer, List&lt;String&gt; participants) {
+<span class="nc" id="L273">        validateUserAvailability(organizer, meeting);</span>
+<span class="nc bnc" id="L274" title="All 2 branches missed.">        for (String participantEmail : participants) {</span>
+<span class="nc" id="L275">            CommonUser participant = this.manageUsersService.getUserByEmail(participantEmail);</span>
+<span class="nc" id="L276">            validateParticipantWithBlockedActivated(participant);</span>
+<span class="nc" id="L277">        }</span>
+<span class="nc" id="L278">        return true;</span>
+    }
+
+    public boolean validateUserAvailability(CommonUser user, Meeting meeting) {
+<span class="nc" id="L282">        validateParticipantWithBlockedActivated(user);</span>
+<span class="nc" id="L283">        List&lt;MeetingAttendance&gt; userMeetings = this.meetingService.getMeetings(user);</span>
+<span class="nc" id="L284">        validateParticipantWithMeetings(userMeetings, meeting);</span>
+<span class="nc" id="L285">        List&lt;Absence&gt; userAbsences = this.absencesService.list(user.getId());</span>
+<span class="nc" id="L286">        validateParticipantWithAbsences(userAbsences, meeting);</span>
+<span class="nc" id="L287">        return true;</span>
+    }
+
+    public boolean validateParticipantWithBlockedActivated(CommonUser user) {
+<span class="nc bnc" id="L291" title="All 4 branches missed.">        if (user.isBlocked() || !user.isActivated()) {</span>
+<span class="nc" id="L292">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+<span class="nc" id="L293">                    &quot;No es posible añadir al usuario \&quot;&quot; + user.getEmail() + &quot;\&quot;.&quot;);</span>
+        }
+<span class="nc" id="L295">        return true;</span>
+    }
+
+    public boolean validateParticipantWithMeetings(List&lt;MeetingAttendance&gt; userMeetings, Meeting meeting) {
+<span class="nc bnc" id="L299" title="All 2 branches missed.">        for (MeetingAttendance userMeeting : userMeetings) {</span>
+<span class="nc bnc" id="L300" title="All 2 branches missed.">            if (userMeeting.getMeeting().getFromDateTime().isBefore(meeting.getToDateTime()) // Solapamiento</span>
+<span class="nc bnc" id="L301" title="All 2 branches missed.">                    &amp;&amp; userMeeting.getMeeting().getToDateTime().isAfter(meeting.getFromDateTime())</span>
+<span class="nc bnc" id="L302" title="All 2 branches missed.">                        &amp;&amp; !userMeeting.getMeeting().getId().equals(meeting.getId()) // Reunión diferente a la actual</span>
+<span class="nc bnc" id="L303" title="All 2 branches missed.">                            &amp;&amp; !userMeeting.getMeeting().getStatus().equals(Status.CANCELADA)) { // Reunión abierta o cerrada</span>
+<span class="nc" id="L304">                throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                        &quot;La reunión no se puede agregar por solapamiento con otra reunión.&quot;);
+            }
+<span class="nc" id="L307">        }</span>
+<span class="nc" id="L308">        return true;</span>
+    }
+
+    public boolean validateParticipantWithAbsences(List&lt;Absence&gt; userAbsences, Meeting meeting) {
+<span class="nc bnc" id="L312" title="All 2 branches missed.">        for (Absence absence : userAbsences) {</span>
+<span class="nc bnc" id="L313" title="All 2 branches missed.">            if (absence.getFromDateTime().isBefore(meeting.getToDateTime())</span>
+<span class="nc bnc" id="L314" title="All 2 branches missed.">                    &amp;&amp; absence.getToDateTime().isAfter(meeting.getFromDateTime())) {</span>
+<span class="nc" id="L315">                throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                        &quot;La reunión no se puede agregar por solapamiento con una ausencia.&quot;);
+            }
+<span class="nc" id="L318">        }</span>
+<span class="nc" id="L319">        return true;</span>
+    }
+
+    /**
+     * Obtiene un usuario común a partir de la petición HTTPS ya validada en forma
+     * de objeto.
+     * 
+     * @param validatedMeetingInfo la petición HTTPS en forma de objeto ya validada
+     *                             en
+     *                             cuanto a formato.
+     * 
+     * @return el usuario
+     */
+    public Meeting toMeeting(CreateMeetingRequest validatedMeetingInfo) {
+
+<span class="fc" id="L334">        Meeting meeting = new Meeting();</span>
+<span class="fc" id="L335">        meeting.setSubject(validatedMeetingInfo.getSubject());</span>
+<span class="fc" id="L336">        meeting.setAllDayLong(validatedMeetingInfo.isAllDayLong());</span>
+<span class="pc bpc" id="L337" title="2 of 4 branches missed.">        meeting.setObservations(validatedMeetingInfo.getObservations() == null || validatedMeetingInfo.getObservations().equals(&quot;&quot;) ? null : validatedMeetingInfo.getObservations());</span>
+<span class="fc" id="L338">        meeting.setStatus(Status.ABIERTA);</span>
+
+<span class="fc bfc" id="L340" title="All 2 branches covered.">        if (!validatedMeetingInfo.isAllDayLong()) {</span>
+<span class="fc" id="L341">            meeting.setFromDateTime(parseDateTime(validatedMeetingInfo.getDate(), validatedMeetingInfo.getFromTime()));</span>
+<span class="fc" id="L342">            meeting.setToDateTime(parseDateTime(validatedMeetingInfo.getDate(), validatedMeetingInfo.getToTime()));</span>
+        } else {
+<span class="fc" id="L344">            LocalDate meetingDate = parseDate(validatedMeetingInfo.getDate());</span>
+<span class="fc" id="L345">            meeting.setFromDateTime(meetingDate.atStartOfDay());</span>
+<span class="fc" id="L346">            meeting.setToDateTime(meetingDate.atTime(LocalTime.MAX));</span>
+        }
+
+<span class="fc" id="L349">        meeting.setOnline(validatedMeetingInfo.isOnline());</span>
+<span class="fc bfc" id="L350" title="All 2 branches covered.">        if (!validatedMeetingInfo.isOnline()) {</span>
+<span class="fc" id="L351">            meeting.setLocation(Location.valueOf(validatedMeetingInfo.getLocation().toUpperCase()));</span>
+        }
+
+<span class="fc" id="L354">        return meeting;</span>
+    }
+
+    /**
+     * Obtiene un objeto MeetingAttendance a partir de una reunión y el organizador.
+     * 
+     * @param meeting   la reunión
+     * @param organizer el organizador
+     * 
+     * @return el objeto MeetingAttendance relativo al organizador
+     */
+    public MeetingAttendance toOrganizerAttendance(Meeting meeting, CommonUser organizer) {
+
+<span class="nc" id="L367">        MeetingAttendance organizerAttendance = new MeetingAttendance();</span>
+
+<span class="nc" id="L369">        organizerAttendance.setUser(organizer);</span>
+<span class="nc" id="L370">        organizerAttendance.setMeeting(null);</span>
+<span class="nc" id="L371">        organizerAttendance.setRole(MeetingAttendance.Role.ORGANIZADOR);</span>
+<span class="nc" id="L372">        organizerAttendance.setInvitationStatus(MeetingAttendance.InvitationStatus.ACEPTADA);</span>
+<span class="nc" id="L373">        organizerAttendance.setAssisted(false);</span>
+<span class="nc" id="L374">        organizerAttendance.setDeclineReason(null);</span>
+
+<span class="nc" id="L376">        return organizerAttendance;</span>
+    }
+
+    // POSIBILIDAD DE TENER validateMeetingAttendanceService
+    public boolean validateInvitationStatusChangeInfo(CommonUser user, ChangeMeetingInvitationStatusRequest changeInfo,
+            Long meetingId) {
+        // Validar que la asistencia a la reunión existe
+<span class="nc" id="L383">        validateMeetingAttendanceExists(meetingId, user.getId());</span>
+<span class="nc" id="L384">        validateMeetingOpen(meetingId);</span>
+<span class="nc" id="L385">        validateIsParticipant(meetingId, user.getId());</span>
+        //validar nulos
+<span class="nc" id="L387">        validateNotNull(changeInfo.getInvitationStatus(), &quot;estado de invitación&quot;);</span>
+<span class="nc" id="L388">        isValidInvitationStatus(changeInfo.getInvitationStatus());</span>
+<span class="nc" id="L389">        validateModifiedStatus(meetingId, user.getId(), changeInfo);</span>
+        // Validar motivo de rechazo
+<span class="nc" id="L391">        if (!InvitationStatus.valueOf(changeInfo.getInvitationStatus().toUpperCase())</span>
+<span class="nc bnc" id="L392" title="All 2 branches missed.">                .equals(InvitationStatus.RECHAZADA)) {</span>
+<span class="nc" id="L393">            changeInfo.setDeclineReason(null);</span>
+        } else {
+<span class="nc" id="L395">            validateNotNull(changeInfo.getDeclineReason(), &quot;motivo de rechazo&quot;);</span>
+        }
+<span class="nc" id="L397">        return true;</span>
+    }
+
+    public boolean isValidInvitationStatus(String invitationStatusStr) {
+        try {
+<span class="nc" id="L402">            InvitationStatus.valueOf(invitationStatusStr.toUpperCase());</span>
+<span class="nc" id="L403">        } catch (IllegalArgumentException e) {</span>
+<span class="nc" id="L404">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;El estado de invitación no puede ser \&quot;&quot; + invitationStatusStr + &quot;\&quot;.&quot;);
+<span class="nc" id="L406">        }</span>
+<span class="nc" id="L407">        return true;</span>
+    }
+
+    public boolean validateMeetingAttendanceExists(Long meetingId, Long userId) {
+<span class="nc bnc" id="L411" title="All 2 branches missed.">        if (this.meetingService.getMeetingAttendance(meetingId, userId) == null) {</span>
+<span class="nc" id="L412">            throw new ResponseStatusException(HttpStatus.NOT_FOUND,</span>
+                    &quot;No se ha encontrado la asistencia a la reunión con id &quot; + meetingId + &quot; del usuario con id &quot;
+                            + userId + &quot;.&quot;);
+        }
+<span class="nc" id="L416">        return true;</span>
+    }
+
+
+
+
+    public boolean validateIsParticipant(Long meetingId, Long userId) {
+<span class="nc" id="L423">        MeetingAttendance meetingAttendance = this.meetingService.getMeetingAttendance(meetingId, userId);</span>
+<span class="nc bnc" id="L424" title="All 2 branches missed.">        if (!meetingAttendance.getRole().equals(MeetingAttendance.Role.ASISTENTE)) {</span>
+<span class="nc" id="L425">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;El organizador no puede realizar esta acción.&quot;);
+        }
+<span class="nc" id="L428">        return true;</span>
+    }
+
+    public boolean validateIsOrganizer(Long meetingId, Long userId) {
+<span class="nc" id="L432">        MeetingAttendance meetingAttendance = this.meetingService.getMeetingAttendance(meetingId, userId);</span>
+<span class="nc bnc" id="L433" title="All 2 branches missed.">        if (!meetingAttendance.getRole().equals(MeetingAttendance.Role.ORGANIZADOR)) {</span>
+<span class="nc" id="L434">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;El asistente no puede realizar esta acción.&quot;);
+        }
+<span class="nc" id="L437">        return true;</span>
+    }
+
+    public boolean validateModifiedStatus(Long meetingId, Long userId,
+            ChangeMeetingInvitationStatusRequest changeInfo) {
+<span class="nc" id="L442">        MeetingAttendance meetingAttendance = this.meetingService.getMeetingAttendance(meetingId, userId);</span>
+<span class="nc bnc" id="L443" title="All 2 branches missed.">        if (meetingAttendance.getInvitationStatus().toString().equalsIgnoreCase(changeInfo.getInvitationStatus())) {</span>
+<span class="nc" id="L444">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+<span class="nc" id="L445">                    &quot;El estado de invitación ya es &quot; + changeInfo.getInvitationStatus() + &quot;.&quot;);</span>
+        }
+
+<span class="nc" id="L448">        return true;</span>
+    }
+
+    public MeetingAttendance toMeetingAttendance(Long meetingId, CommonUser user,
+            ChangeMeetingInvitationStatusRequest changeInfo) {
+<span class="nc" id="L453">        MeetingAttendance meetingAttendance = this.meetingService.getMeetingAttendance(meetingId, user.getId());</span>
+<span class="nc" id="L454">        meetingAttendance.setInvitationStatus(InvitationStatus.valueOf(changeInfo.getInvitationStatus().toUpperCase()));</span>
+<span class="nc" id="L455">        if (!InvitationStatus.valueOf(changeInfo.getInvitationStatus().toUpperCase())</span>
+<span class="nc bnc" id="L456" title="All 2 branches missed.">                .equals(InvitationStatus.RECHAZADA)) {</span>
+<span class="nc" id="L457">            meetingAttendance.setDeclineReason(null);</span>
+        } else {
+<span class="nc" id="L459">            meetingAttendance.setDeclineReason(changeInfo.getDeclineReason());</span>
+        }
+<span class="nc" id="L461">        return meetingAttendance;</span>
+    }
+
+    public boolean validateAssistChangeInfo(CommonUser user, Long meetingId) {
+        // Validar que la asistencia a la reunión existe
+<span class="nc" id="L466">        validateMeetingAttendanceExists(meetingId, user.getId());</span>
+<span class="nc" id="L467">        validateMeetingOpen(meetingId);</span>
+<span class="nc" id="L468">        validateNotAssisted(meetingId, user.getId());</span>
+<span class="nc" id="L469">        validateOrganizerAssist(user, meetingId); //si el organizador es el que asiste, la reunión se cierra</span>
+<span class="nc" id="L470">        return true;</span>
+    }
+
+    public boolean validateNotAssisted(Long meetingId, Long userId) {
+<span class="nc" id="L474">        MeetingAttendance meetingAttendance = this.meetingService.getMeetingAttendance(meetingId, userId);</span>
+<span class="nc bnc" id="L475" title="All 2 branches missed.">        if (meetingAttendance.hasAssisted()) {</span>
+<span class="nc" id="L476">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;El usuario ya ha registrado su asistencia a la reunión.&quot;);
+        }
+<span class="nc" id="L479">        return true;</span>
+    }
+
+    public boolean validateOrganizerAssist(CommonUser user, Long meetingId) {//GONZALO,COMPROBAR QUE FUNCIONA
+<span class="nc" id="L483">        MeetingAttendance meetingAttendance = this.meetingService.getMeetingAttendance(meetingId, user.getId());</span>
+<span class="nc bnc" id="L484" title="All 2 branches missed.">        if(meetingAttendance.getRole().equals(MeetingAttendance.Role.ORGANIZADOR)) {</span>
+<span class="nc" id="L485">            Meeting meeting = this.meetingService.getMeeting(meetingId);</span>
+<span class="nc" id="L486">            meeting.setStatus(Meeting.Status.CERRADA);</span>
+        }
+<span class="nc" id="L488">        return true;</span>
+    }
+
+    public boolean validateMeetingOpen(Long meetingId) {
+<span class="nc" id="L492">        Meeting meeting = this.meetingService.getMeeting(meetingId);</span>
+<span class="nc bnc" id="L493" title="All 2 branches missed.">        if (!meeting.getStatus().equals(Status.ABIERTA)) {</span>
+<span class="nc" id="L494">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;La reunión está cerrada o cancelada.&quot;);
+        }
+<span class="nc" id="L497">        return true;</span>
+    }
+
+    public boolean validateChangeStatusInfo(CommonUser user, Long meetingId, String status) {
+        // Validar que la asistencia a la reunión existe
+<span class="nc" id="L502">        validateMeetingAttendanceExists(meetingId, user.getId());</span>
+<span class="nc" id="L503">        validateMeetingOpen(meetingId);</span>
+<span class="nc" id="L504">        validateIsOrganizer(meetingId, user.getId());</span>
+        // Validar estado
+<span class="nc" id="L506">        validateNotNull(status, &quot;estado&quot;);</span>
+<span class="nc" id="L507">        isValidStatus(status);</span>
+<span class="nc" id="L508">        validateModifiedStatus(meetingId, status);</span>
+<span class="nc" id="L509">        return true;</span>
+    }
+
+    public boolean validateModifiedStatus(Long meetingId, String status) {
+<span class="nc" id="L513">        Meeting meeting = this.meetingService.getMeeting(meetingId);</span>
+<span class="nc bnc" id="L514" title="All 2 branches missed.">        if (Status.valueOf(status.toUpperCase()).equals(meeting.getStatus())) {</span>
+<span class="nc" id="L515">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;El estado de la reunión ya es &quot; + status + &quot;.&quot;);
+        }
+<span class="nc bnc" id="L518" title="All 2 branches missed.">        if (Status.valueOf(status.toUpperCase()).equals(Status.CERRADA)){</span>
+<span class="nc" id="L519">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE, &quot;No puedes cerrar la reunión.&quot;);</span>
+        }
+
+<span class="nc" id="L522">        return true;</span>
+    }
+
+    public boolean isValidStatus(String statusStr) {
+        try {
+<span class="nc" id="L527">            Status.valueOf(statusStr.toUpperCase());</span>
+<span class="nc" id="L528">        } catch (IllegalArgumentException e) {</span>
+<span class="nc" id="L529">            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,</span>
+                    &quot;El estado no puede ser \&quot;&quot; + statusStr + &quot;\&quot;.&quot;);
+<span class="nc" id="L531">        }</span>
+<span class="nc" id="L532">        return true;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

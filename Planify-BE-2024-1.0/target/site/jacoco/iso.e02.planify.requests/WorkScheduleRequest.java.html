@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>WorkScheduleRequest.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.requests</a> &gt; <span class="el_source">WorkScheduleRequest.java</span></div><h1>WorkScheduleRequest.java</h1><pre class="source lang-java linenums">package iso.e02.planify.requests;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Clase auxiliar para recibir solicitudes de horarios de trabajo.
+ * 
+ * Esta clase actúa como un objeto de transferencia de datos (DTO) para
+ * encapsular
+ * la información de los bloques de horario laboral en las solicitudes HTTP.
+ * Contiene una lista de mapas que representan los bloques de horarios, donde
+ * cada
+ * mapa almacena los detalles del bloque, como el nombre, la hora de inicio y la
+ * hora de fin.
+ */
+
+// Nueva clase auxiliar para el horario de trabajo
+<span class="fc" id="L19">public class WorkScheduleRequest {</span>
+
+    /**
+     * Lista de bloques de horario laboral.
+     * 
+     * Cada bloque está representado como un mapa de claves y valores, donde las
+     * claves son
+     * nombres de atributos (por ejemplo, &quot;blockName&quot;, &quot;startHour&quot;, &quot;endHour&quot;) y los
+     * valores son cadenas
+     * que representan los detalles de cada bloque de horario.
+     */
+
+    private List&lt;Map&lt;String, String&gt;&gt; blocks;
+
+    //constructor
+   
+
+    /**
+     * Obtiene la lista de bloques de horario laboral.
+     * 
+     * @return una lista de mapas que representan los bloques de horarios.
+     */
+
+    public List&lt;Map&lt;String, String&gt;&gt; getBlocks() {
+<span class="fc" id="L43">        return this.blocks;</span>
+    }
+
+    public void setBlocks(List&lt;Map&lt;String, String&gt;&gt; blocks) {
+<span class="fc" id="L47">        this.blocks = blocks;</span>
+<span class="fc" id="L48">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

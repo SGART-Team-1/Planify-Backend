@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ManageUsersController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.controllers</a> &gt; <span class="el_source">ManageUsersController.java</span></div><h1>ManageUsersController.java</h1><pre class="source lang-java linenums">package iso.e02.planify.controllers;
+
+// imports de iso.e02.planify
+import iso.e02.planify.entities.AppUser;
+import iso.e02.planify.entities.CommonUser;
+import iso.e02.planify.repositories.UsersRepository;
+import iso.e02.planify.requests.RegisterRequest;
+import iso.e02.planify.services.ManageUsersService;
+import iso.e02.planify.services.MeetingService;
+import iso.e02.planify.services.ValidateUserService;
+
+// imports de java
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+// imports de spring
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+
+/**
+ * Controlador REST para gestionar usuarios en la aplicación.
+ * 
+ * Permite realizar operaciones CRUD como obtener, editar, bloquear,
+ * desbloquear, activar, eliminar usuarios. Tambien proporciona puntos
+ * de acceso para validar el JWT de un usuario y comprobar si tiene reuniones.
+ */
+@RestController
+@RequestMapping(&quot;/api/users&quot;) // Ruta base para los puntos de acceso de usuarios
+@CrossOrigin(&quot;*&quot;)
+<span class="fc" id="L42">public class ManageUsersController {</span>
+
+    @Autowired
+    private ManageUsersService userService; // Injección del servicio de usuarios
+
+    @Autowired
+    private ValidateUserService validateUserService; // Injección del servicio de validación de usuarios
+
+    @Autowired
+	private UsersRepository appUserRepository; // Injección del repositorio de usuarios
+
+    @Autowired
+    private MeetingService meetingService; // Inyección del servicio de reuniones
+
+    /**
+     * Obtiene una lista de usuarios con datos específicos para mostrar.
+     *
+     * @return ResponseEntity que contiene una lista de usuarios en formato de mapa
+     *         de datos.
+     */
+    @GetMapping(&quot;/showUsers&quot;)
+    public ResponseEntity&lt;List&lt;Map&lt;String, Object&gt;&gt;&gt; getUserToShow() {
+<span class="fc" id="L64">        return ResponseEntity.ok(userService.getUserToShow()); // Llama al servicio de usuarios para obtener la lista de usuarios</span>
+    }
+
+    /**
+     * Obtiene un usuario específico por su ID.
+     *
+     * Como éste método lo usan tanto administradores como usuarios, se ha añadido
+     * una validación de acceso para comprobar si el usuario que hace la petición
+     * está intentando acceder a su propia información.
+     * 
+     * @param userId ID del usuario a obtener.
+     * @return ResponseEntity que contiene el usuario en caso de encontrarlo.
+     */
+    @GetMapping(&quot;/{userId}/inspect&quot;)
+    public ResponseEntity&lt;CommonUser&gt; getUserById(@RequestHeader(&quot;Authorization&quot;) String authorizationHeader, @PathVariable Long userId) {
+<span class="fc" id="L79">        this.validateUserService.validateAccess(authorizationHeader, userId); // Validación de acceso, debido al uso por parte de ambos roles</span>
+<span class="fc" id="L80">        Optional&lt;CommonUser&gt; user = userService.getUserById(userId); // Llama al servicio de usuarios para obtener el usuario</span>
+<span class="fc" id="L81">        return user.map(ResponseEntity::ok).orElseGet(() -&gt; ResponseEntity.notFound().build());</span>
+    }
+
+    /**
+     * Bloquea a un usuario por su ID.
+     *
+     * @param userId ID del usuario a bloquear.
+     */
+    @PutMapping(&quot;/{userId}/block&quot;)
+    public void blockUser(@PathVariable Long userId) {
+<span class="fc" id="L91">            userService.blockUser(userId); //Llama al servicio de usuarios para bloquear al usuario</span>
+<span class="fc" id="L92">    }</span>
+
+    /**
+     * Desbloquea a un usuario por su ID.
+     *
+     * @param userId ID del usuario a desbloquear.
+     */
+    @PutMapping(&quot;/{userId}/unblock&quot;)
+    public void unblockUser(@PathVariable Long userId) {
+<span class="fc" id="L101">        userService.unblockUser(userId); //Llama al servicio de usuarios para desbloquear al usuario</span>
+<span class="fc" id="L102">    }</span>
+
+    /**
+     * Activa a un usuario por su ID.
+     *
+     * @param userId ID del usuario a activar.
+     */
+    @PutMapping(&quot;/{userId}/activate&quot;)
+    public void activateUser(@PathVariable Long userId) {
+<span class="fc" id="L111">        userService.activateUser(userId); //Llama al servicio de usuarios para activar al usuario</span>
+        
+<span class="fc" id="L113">    }</span>
+
+    /**
+     * Edita la información de un usuario por su ID.
+     *
+     * @param userId      ID del usuario a editar.
+     * @param userInfo Objeto RegisterRequest con la nueva información del usuario.
+     */
+    @PutMapping(&quot;/{userId}/edit&quot;)
+    public void editUser(@PathVariable Long userId, @RequestBody RegisterRequest userInfo) {
+<span class="fc" id="L123">            this.validateUserService.validateUserInfoEdit(userInfo); // Validación de la información a guardar de la edición</span>
+<span class="fc" id="L124">		    CommonUser updatedUser = this.validateUserService.toCommonUser(userInfo); // Conversión de la información a un objeto CommonUser</span>
+<span class="fc" id="L125">            userService.editUser(userId, updatedUser); // Llama al servicio de usuarios para editar al usuario  </span>
+<span class="fc" id="L126">    }</span>
+
+    /**
+     * Elimina a un usuario por su ID.
+     *
+     * @param userId ID del usuario a eliminar.
+     */
+    @DeleteMapping(&quot;/{userId}&quot;)
+    public void deleteUser(@PathVariable Long userId) {
+<span class="fc" id="L135">        userService.deleteUser(userId); // Llama al servicio de usuarios para eliminar al usuario</span>
+<span class="fc" id="L136">    }</span>
+
+    /**
+     * Comprueba si un usuario tiene reuniones abiertas.
+     *
+     * @param userId ID del usuario a comprobar.
+     * @return ResponseEntity que contiene un booleano que indica si el usuario tiene reuniones abiertas.
+     */
+    @GetMapping(&quot;/{userId}/hasOpenedMeetings&quot;)
+    public ResponseEntity&lt;Boolean&gt; hasOpenedMeetings(@PathVariable Long userId) {
+<span class="fc" id="L146">        validateUserService.validateCommonUserExist(userId); // Validación de que el usuario exista</span>
+<span class="fc" id="L147">        return ResponseEntity.ok(this.meetingService.hasOpenedMeetings(userId)); // Llama al servicio de reuniones para comprobar si el usuario tiene reuniones abiertas</span>
+    }
+
+    /**
+     * Valida el JWT de un usuario y devuelve sus datos.
+     * 
+     * @param authorizationHeader la cabecera de autorización con el JWT del usuario.
+     * @return el usuario asociado al JWT.
+     */
+    @GetMapping(&quot;/validateJWT&quot;)
+    public ResponseEntity&lt;AppUser&gt; validateJWT(@RequestHeader(&quot;Authorization&quot;) String authorizationHeader) {
+<span class="fc" id="L158">        String email = validateUserService.validateJWT(authorizationHeader); // Validación del JWT</span>
+<span class="fc" id="L159">        Optional&lt;AppUser&gt; optAppUser = appUserRepository.findByEmail(email); // Búsqueda del usuario en el repositorio</span>
+        // Si no se encuentra el usuario, se lanza una excepción
+<span class="fc bfc" id="L161" title="All 2 branches covered.">        if (optAppUser.isEmpty()) {</span>
+<span class="fc" id="L162">            throw new ResponseStatusException(HttpStatus.FORBIDDEN, &quot;Usted se está intentando colar en el sistema&quot;);</span>
+        }
+<span class="fc" id="L164">        return ResponseEntity.ok(optAppUser.get());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

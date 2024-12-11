@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>App.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify</a> &gt; <span class="el_source">App.java</span></div><h1>App.java</h1><pre class="source lang-java linenums">package iso.e02.planify;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.web.servlet.ServletComponentScan;
+import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
+
+import iso.e02.planify.config.SystemPropertiesConfig;
+
+/**
+ * Clase principal de la aplicación que inicia el contexto de Spring Boot.
+ * Extiende {@link SpringBootServletInitializer} para permitir la implementación de la aplicación en un entorno de servidor de aplicaciones.
+ */
+@SpringBootApplication
+@ServletComponentScan
+<span class="fc" id="L17">public class App extends SpringBootServletInitializer {</span>
+
+    /**
+     * Método principal de la aplicación, invocado al ejecutar la aplicación desde la línea de comandos.
+     * Carga las propiedades del sistema antes de iniciar el contexto de Spring Boot.
+     * 
+     * @param args los argumentos de la línea de comandos.
+     */
+    public static void main(String[] args) {
+        // Cargar las propiedades del sistema antes de iniciar la aplicación.
+<span class="nc" id="L27">        SystemPropertiesConfig.loadSystemProperties();</span>
+
+        // Iniciar la aplicación con Spring Boot.
+<span class="nc" id="L30">        SpringApplication.run(App.class, args);</span>
+<span class="nc" id="L31">    }</span>
+
+    /**
+     * Método sobrescrito para configurar la aplicación cuando se implementa en un entorno de servidor.
+     * Permite construir el contexto de la aplicación y especificar la clase de configuración.
+     * 
+     * @param builder el constructor de la aplicación de Spring.
+     * @return el objeto {@link SpringApplicationBuilder} con la configuración de la aplicación.
+     */
+    @Override
+    protected SpringApplicationBuilder configure(SpringApplicationBuilder builder) {
+        // Configurar la aplicación indicando que la clase de configuración es 'App'.
+<span class="fc" id="L43">        return builder.sources(App.class);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

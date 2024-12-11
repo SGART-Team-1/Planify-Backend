@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ManageAdministratorService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.services</a> &gt; <span class="el_source">ManageAdministratorService.java</span></div><h1>ManageAdministratorService.java</h1><pre class="source lang-java linenums">package iso.e02.planify.services;
+
+// imports de iso.e02.planify
+import iso.e02.planify.entities.Administrator;
+import iso.e02.planify.repositories.AdministratorRepository;
+
+// imports de java
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+// imports de spring
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+// imports de jakarta
+import jakarta.transaction.Transactional;
+
+/**
+ * Servicio para gestionar las operaciones relacionadas con los administradores.
+ * Proporciona métodos para crear, editar, eliminar y obtener información de los
+ * administradores.
+ */
+@Service
+<span class="fc" id="L28">public class ManageAdministratorService {</span>
+
+    @Autowired
+    private AdministratorRepository administratorRepository; // Inyección del repositorio de administradores.
+
+    /**
+     * Obtiene una lista de todos los administradores registrados en el sistema.
+     *
+     * @return una lista de objetos Administrator.
+     */
+    public List&lt;Administrator&gt; getAllAdministrators() {
+<span class="fc" id="L39">        return administratorRepository.findAll();</span>
+    }
+
+    /**
+     * Obtiene una lista de administradores con solo los datos necesarios para
+     * mostrar.
+     * Incluye nombre, apellido, correo electrónico y ID.
+     *
+     * @return una lista de mapas con la información básica de cada administrador.
+     */
+    public List&lt;Map&lt;String, Object&gt;&gt; getAdminsToShow() {
+<span class="fc" id="L50">        return administratorRepository.getAdminsToShow();</span>
+    }
+
+    /**
+     * Busca y obtiene un administrador específico por su ID.
+     *
+     * @param id el ID del administrador a buscar.
+     * @return un objeto Optional&lt;Administrator&gt; que contiene el administrador si se
+     *         encuentra, o vacío si no.
+     */
+    public Optional&lt;Administrator&gt; getAdministratorById(Long id) {
+<span class="fc" id="L61">        return administratorRepository.findById(id);</span>
+    }
+
+    /**
+     * Crea y guarda un nuevo administrador en el sistema.
+     * 
+     * @param administrator el objeto Administrator que contiene la
+     *                      información del nuevo administrador.
+     * @return el administrador creado.
+     */
+    @Transactional
+    public Administrator createAdministrator(Administrator administrator) {
+        try {
+<span class="fc" id="L74">            return this.administratorRepository.save(administrator);</span>
+<span class="fc" id="L75">        } catch (DataIntegrityViolationException e) { // Si el correo ya está registrado en la base de datos se lanza una excepción.</span>
+<span class="fc" id="L76">            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, &quot;El usuario ya está registrado.&quot;);</span>
+        } 
+    }
+
+    /**
+     * Edita la información de un administrador existente.
+     *
+     * @param id                   el ID del administrador a editar.
+     * @param updatedAdministrator el objeto Administrator con los datos
+     *                             actualizados.
+     * @throws ResponseStatusException si el administrador no es encontrado o si
+     *                                 ocurre un error en la actualización.
+     */
+    @Transactional
+    public void editAdministrator(Long id, Administrator updatedAdministrator) {
+<span class="fc" id="L91">        Optional&lt;Administrator&gt; adminOptional = administratorRepository.findById(id);</span>
+<span class="fc bfc" id="L92" title="All 2 branches covered.">        if (adminOptional.isPresent()) { // Validar que el administrador existe</span>
+<span class="fc" id="L93">            Administrator existingAdmin = adminOptional.get();</span>
+            // Actualizar los atributos heredados de AppUser
+<span class="fc" id="L95">            existingAdmin.setName(updatedAdministrator.getName());</span>
+<span class="fc" id="L96">            existingAdmin.setSurnames(updatedAdministrator.getSurnames());</span>
+            // Si la foto es null no se introduce en la base de datos ni como 0x
+<span class="pc bpc" id="L98" title="3 of 4 branches missed.">            if (updatedAdministrator.getPhoto() == null || updatedAdministrator.getPhoto().length == 0) {</span>
+<span class="fc" id="L99">                existingAdmin.setPhoto(null);</span>
+            } else {
+<span class="nc" id="L101">                existingAdmin.setPhoto(updatedAdministrator.getPhoto());</span>
+            }
+<span class="fc" id="L103">            existingAdmin.setCentre(updatedAdministrator.getCentre());</span>
+<span class="fc" id="L104">            existingAdmin.setInternal(updatedAdministrator.isInternal());</span>
+<span class="fc" id="L105">            administratorRepository.save(existingAdmin); // Guardar los cambios</span>
+<span class="fc" id="L106">        } else {</span>
+<span class="fc" id="L107">            throw new ResponseStatusException(HttpStatus.NOT_FOUND, &quot;Administrador no encontrado&quot;); </span>
+        }
+<span class="fc" id="L109">    }</span>
+
+    /**
+     * Elimina un administrador específico del sistema por su ID.
+     *
+     * @param id el ID del administrador a eliminar.
+     * @throws ResponseStatusException si el administrador no se encuentra.
+     */
+    @Transactional
+    public void deleteAdministrator(Long id) {
+<span class="fc bfc" id="L119" title="All 2 branches covered.">        if (administratorRepository.existsById(id)) { // Comprobar que el administrador existe</span>
+<span class="fc" id="L120">            administratorRepository.deleteById(id);</span>
+        } else {
+<span class="fc" id="L122">            throw new ResponseStatusException(HttpStatus.NOT_FOUND, &quot;Administrador no encontrado&quot;);</span>
+        }
+<span class="fc" id="L124">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

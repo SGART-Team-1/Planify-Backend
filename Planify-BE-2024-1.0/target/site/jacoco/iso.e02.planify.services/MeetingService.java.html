@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MeetingService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.services</a> &gt; <span class="el_source">MeetingService.java</span></div><h1>MeetingService.java</h1><pre class="source lang-java linenums">package iso.e02.planify.services;
+
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+import iso.e02.planify.entities.CommonUser;
+import iso.e02.planify.entities.Meeting;
+import iso.e02.planify.entities.Meeting.Status;
+import iso.e02.planify.entities.MeetingAttendance;
+import iso.e02.planify.entities.MeetingAttendance.InvitationStatus;
+import iso.e02.planify.repositories.MeetingAttendanceRepository;
+import iso.e02.planify.repositories.MeetingRespository;
+import iso.e02.planify.requests.CandidateToMeetinDTO;
+import iso.e02.planify.requests.CandidatesRequest;
+import iso.e02.planify.requests.InspectUserForMeetingsDTO;
+import jakarta.transaction.Transactional;
+
+@Service
+<span class="fc" id="L28">public class MeetingService {</span>
+
+    public static final String NOT_ORGANIZER_ERROR = &quot;Solo el organizador puede cambiar el estado de la reunión&quot;;
+
+    @Autowired
+    private MeetingRespository meetingRepository;
+
+    @Autowired
+    private MeetingAttendanceRepository meetingAttendanceRepository;
+
+    @Autowired
+    private ManageUsersService manageUsersService;
+
+    @Autowired
+    private NotificationService notificationService;
+
+    public List&lt;Map&lt;String, Object&gt;&gt; listAll(Long userId) {
+<span class="nc" id="L45">        return meetingAttendanceRepository.findAllByUserId(userId);</span>
+    }
+
+    public Meeting getMeeting(Long meetingId) {
+<span class="nc" id="L49">        Optional&lt;Meeting&gt; meetingOptional = meetingRepository.findById(meetingId);</span>
+<span class="nc bnc" id="L50" title="All 2 branches missed.">        if (meetingOptional.isEmpty()) {</span>
+<span class="nc" id="L51">            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, &quot;Reunión no encontrada&quot;);</span>
+        }
+<span class="nc" id="L53">        return meetingOptional.get();</span>
+    }
+
+    public List&lt;MeetingAttendance&gt; getMeetings(CommonUser user) {
+<span class="nc" id="L57">        return meetingAttendanceRepository.findByUserId(user.getId());</span>
+    }
+
+    public MeetingAttendance getMeetingAttendance(Long meetingId, Long userId) {
+<span class="nc" id="L61">        return meetingAttendanceRepository.findByMeetingIdAndUserId(meetingId, userId);</span>
+    }
+
+    public List&lt;InspectUserForMeetingsDTO&gt; getMeetingAttendances(Long meetingId) {
+<span class="nc" id="L65">        return meetingAttendanceRepository.findAttendeesForMeetingById(meetingId);</span>
+    }
+
+    public InspectUserForMeetingsDTO findOrganizadorDetailsById(Long meetingId) {
+<span class="nc" id="L69">        return meetingAttendanceRepository.findOrganizadorDetailsById(meetingId);</span>
+    }
+
+    @Transactional
+    public void create(Meeting meeting, CommonUser organizer, List&lt;String&gt; participantsEmails) {
+<span class="nc" id="L74">        List&lt;MeetingAttendance&gt; participants = new ArrayList&lt;&gt;();</span>
+    
+        // Crear la asistencia del organizador
+<span class="nc" id="L77">        MeetingAttendance organizerAttendance = new MeetingAttendance();</span>
+<span class="nc" id="L78">        organizerAttendance.setUser(organizer);</span>
+<span class="nc" id="L79">        organizerAttendance.setMeeting(meeting);</span>
+<span class="nc" id="L80">        organizerAttendance.setRole(MeetingAttendance.Role.ORGANIZADOR);</span>
+<span class="nc" id="L81">        organizerAttendance.setInvitationStatus(MeetingAttendance.InvitationStatus.ACEPTADA);</span>
+<span class="nc" id="L82">        organizerAttendance.setAssisted(false);</span>
+<span class="nc" id="L83">        organizerAttendance.setDeclineReason(null);</span>
+<span class="nc" id="L84">        participants.add(organizerAttendance);</span>
+    
+        // Crear asistencias para los demás participantes
+<span class="nc bnc" id="L87" title="All 2 branches missed.">        for (String participantEmail : participantsEmails) {</span>
+<span class="nc" id="L88">            MeetingAttendance participantAttendance = new MeetingAttendance();</span>
+<span class="nc" id="L89">            participantAttendance.setUser(this.manageUsersService.getUserByEmail(participantEmail));</span>
+<span class="nc" id="L90">            participantAttendance.setMeeting(meeting);</span>
+<span class="nc" id="L91">            participantAttendance.setRole(MeetingAttendance.Role.ASISTENTE);</span>
+<span class="nc" id="L92">            participantAttendance.setInvitationStatus(MeetingAttendance.InvitationStatus.PENDIENTE);</span>
+<span class="nc" id="L93">            participantAttendance.setAssisted(false);</span>
+<span class="nc" id="L94">            participantAttendance.setDeclineReason(null);</span>
+<span class="nc" id="L95">            participants.add(participantAttendance);</span>
+<span class="nc" id="L96">        }</span>
+    
+<span class="nc" id="L98">        meeting.setParticipants(participants);</span>
+<span class="nc" id="L99">        meetingRepository.save(meeting);</span>
+    
+        // Crear notificaciones para los asistentes (excluyendo al organizador)
+<span class="nc bnc" id="L102" title="All 2 branches missed.">        for (MeetingAttendance participant : participants) {</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">            if (!participant.getRole().equals(MeetingAttendance.Role.ORGANIZADOR)) {</span>
+<span class="nc" id="L104">                notificationService.createMeetingInvitationNotification(</span>
+<span class="nc" id="L105">                        meeting.getId(),</span>
+<span class="nc" id="L106">                        participant.getUser().getId(),</span>
+                        organizer);
+            }
+<span class="nc" id="L109">        }</span>
+<span class="nc" id="L110">    }</span>
+    
+    @Transactional
+    public void editMeeting(Meeting updatedMeeting, Long meetingId, CommonUser organizer, List&lt;String&gt; participants) {
+
+        // Lista con los participantes de la reunión a editar
+<span class="nc" id="L116">        List&lt;MeetingAttendance&gt; newParticipants = new ArrayList&lt;&gt;();</span>
+        // Lista con los participantes que hay antes de editar la reunión
+<span class="nc" id="L118">        List&lt;InspectUserForMeetingsDTO&gt; existingParticipantsList = getMeetingAttendances(meetingId);</span>
+
+        // Conservar los participantes que ya estaban
+<span class="nc bnc" id="L121" title="All 2 branches missed.">        for (InspectUserForMeetingsDTO existingParticipant : existingParticipantsList) {</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">            if (participants.contains(existingParticipant.getEmail())</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">                    || organizer.getEmail().equals(existingParticipant.getEmail())) {</span>
+<span class="nc" id="L124">                MeetingAttendance attendance = getMeetingAttendance(meetingId, existingParticipant.getId());</span>
+<span class="nc" id="L125">                newParticipants.add(attendance); // Aunque estuviera, se añade a la nueva lista de participantes</span>
+<span class="nc" id="L126">                participants.remove(existingParticipant.getEmail()); // Y se elimina para no tenerlos en cuenta de nuevo</span>
+            }
+<span class="nc" id="L128">        }</span>
+
+        // Añadir los participantes que no estaban
+<span class="nc bnc" id="L131" title="All 2 branches missed.">        for (String newParticipantEmail : participants) {</span>
+<span class="nc" id="L132">            CommonUser participant = this.manageUsersService.getUserByEmail(newParticipantEmail);</span>
+
+<span class="nc" id="L134">            MeetingAttendance attendance = new MeetingAttendance();</span>
+<span class="nc" id="L135">            attendance.setUser(participant);</span>
+<span class="nc" id="L136">            attendance.setMeeting(updatedMeeting);</span>
+<span class="nc" id="L137">            attendance.setRole(MeetingAttendance.Role.ASISTENTE);</span>
+<span class="nc" id="L138">            attendance.setInvitationStatus(MeetingAttendance.InvitationStatus.PENDIENTE);</span>
+<span class="nc" id="L139">            attendance.setAssisted(false);</span>
+<span class="nc" id="L140">            attendance.setDeclineReason(null);</span>
+<span class="nc" id="L141">            newParticipants.add(attendance);</span>
+<span class="nc" id="L142">        }</span>
+
+        // Establecer la nueva lista de participantes
+<span class="nc" id="L145">        updatedMeeting.setParticipants(newParticipants);</span>
+
+        // Guardar la reunión y, consecuentemente, los participantes
+<span class="nc" id="L148">        this.meetingRepository.save(updatedMeeting);</span>
+<span class="nc" id="L149">    }</span>
+
+    @Transactional
+    public void assist(CommonUser user, Long meetingId) {
+<span class="nc" id="L153">        Meeting meeting = getMeeting(meetingId);</span>
+<span class="nc" id="L154">        MeetingAttendance attendance = getMeetingAttendance(meeting.getId(), user.getId());</span>
+<span class="nc" id="L155">        attendance.setAssisted(true);</span>
+<span class="nc" id="L156">        meetingAttendanceRepository.save(attendance);</span>
+        // Usar NotificationService para crear la notificación
+<span class="nc" id="L158">        notificationService.createAssistanceNotification(attendance.getMeeting(), user);</span>
+<span class="nc" id="L159">    }</span>
+
+    @Transactional
+    public boolean hasAssisted(CommonUser user, Long meetingId) {
+<span class="nc" id="L163">        Meeting meeting = getMeeting(meetingId);</span>
+<span class="nc" id="L164">        MeetingAttendance attendance = getMeetingAttendance(meeting.getId(), user.getId());</span>
+<span class="nc" id="L165">        return attendance.hasAssisted();</span>
+    }
+
+    @Transactional
+    public InvitationStatus hasAccepted(CommonUser user, Long meetingId) {
+<span class="nc" id="L170">        Meeting meeting = getMeeting(meetingId);</span>
+<span class="nc" id="L171">        MeetingAttendance attendance = getMeetingAttendance(meeting.getId(), user.getId());</span>
+<span class="nc" id="L172">        return attendance.getInvitationStatus();</span>
+    }
+
+    @Transactional
+    public void changeStatus(Long meetingId, String status, CommonUser organizer) {
+<span class="nc" id="L177">        Meeting meeting = getMeeting(meetingId);</span>
+    
+        // Si el estado es CANCELADA, manejamos la notificación de cancelación
+<span class="nc bnc" id="L180" title="All 2 branches missed.">        if (&quot;CANCELADA&quot;.equalsIgnoreCase(status)) {</span>
+            // Eliminar la reunión si se desea (o mantenerla como cancelada según la lógica actual)
+<span class="nc" id="L182">            meeting.setStatus(Meeting.Status.CANCELADA);</span>
+<span class="nc" id="L183">            meetingRepository.save(meeting);</span>
+    
+            // Crear notificaciones para los asistentes que habían aceptado
+<span class="nc" id="L186">            notificationService.createCancellationNotifications(meetingId, organizer);</span>
+        } else {
+<span class="nc" id="L188">            meeting.setStatus(Meeting.Status.valueOf(status));</span>
+<span class="nc" id="L189">            meetingRepository.save(meeting);</span>
+        }
+<span class="nc" id="L191">    }</span>
+    
+
+    @Transactional
+    public void changeInvitationStatus(MeetingAttendance changedMeetingAttendance, CommonUser user) {
+<span class="nc" id="L196">        meetingAttendanceRepository.save(changedMeetingAttendance);</span>
+<span class="nc" id="L197">        notificationService.createResponseNotification(</span>
+<span class="nc" id="L198">            changedMeetingAttendance.getMeeting().getId(),</span>
+<span class="nc" id="L199">            user.getId(),</span>
+<span class="nc" id="L200">            changedMeetingAttendance.getInvitationStatus(),</span>
+<span class="nc" id="L201">            changedMeetingAttendance.getDeclineReason()</span>
+        );
+<span class="nc" id="L203">    }</span>
+
+    @Transactional
+    public List&lt;CandidateToMeetinDTO&gt; getCandidatesToMeeting(CandidatesRequest request) {
+<span class="nc" id="L207">        LocalDateTime fromDateTimeMeeting = parseDateTime(request.getMeetingDate(), request.getFromDateTime());</span>
+<span class="nc" id="L208">        LocalDateTime toDateTimeMeeting = parseDateTime(request.getMeetingDate(), request.getToDateTime());</span>
+<span class="nc" id="L209">        boolean isAllDay = request.isAllDay();</span>
+
+<span class="nc" id="L211">        List&lt;CandidateToMeetinDTO&gt; registersObtained = meetingRepository.getCandidatesToMeeting();</span>
+<span class="nc" id="L212">        return filterCandidates(registersObtained, fromDateTimeMeeting, toDateTimeMeeting, isAllDay);</span>
+    }
+
+    private LocalDateTime parseDateTime(String date, String time) {
+<span class="nc" id="L216">        return LocalDateTime.parse(date + &quot;T&quot; + time);</span>
+    }
+
+    private List&lt;CandidateToMeetinDTO&gt; filterCandidates(
+            List&lt;CandidateToMeetinDTO&gt; candidates,
+            LocalDateTime fromDateTimeMeeting,
+            LocalDateTime toDateTimeMeeting,
+            boolean isAllDay) {
+
+<span class="nc" id="L225">        List&lt;CandidateToMeetinDTO&gt; userCandidates = new ArrayList&lt;&gt;();</span>
+
+<span class="nc bnc" id="L227" title="All 2 branches missed.">        for (CandidateToMeetinDTO candidate : candidates) {</span>
+<span class="nc" id="L228">            boolean hasOverlap = checkOverlap(</span>
+                    candidate, fromDateTimeMeeting, toDateTimeMeeting, isAllDay);
+
+<span class="nc" id="L231">            updateOrAddCandidate(userCandidates, candidate, hasOverlap);</span>
+<span class="nc" id="L232">        }</span>
+<span class="nc" id="L233">        return userCandidates;</span>
+    }
+
+    private boolean checkOverlap(
+            CandidateToMeetinDTO candidate,
+            LocalDateTime fromDateTimeMeeting,
+            LocalDateTime toDateTimeMeeting,
+            boolean isAllDay) {
+
+<span class="nc" id="L242">        boolean hasOverlap = false;</span>
+
+<span class="nc bnc" id="L244" title="All 4 branches missed.">        if (candidate.getfromDateTimeAbsence() != null &amp;&amp; candidate.gettoDateTimeAbsence() != null) {</span>
+<span class="nc" id="L245">            LocalDateTime fromDateRecord = candidate.getfromDateTimeAbsence();</span>
+<span class="nc" id="L246">            LocalDateTime toDateRecord = candidate.gettoDateTimeAbsence();</span>
+
+<span class="nc bnc" id="L248" title="All 2 branches missed.">            boolean dateOverlap = !fromDateRecord.toLocalDate().isAfter(fromDateTimeMeeting.toLocalDate()) &amp;&amp;</span>
+<span class="nc bnc" id="L249" title="All 2 branches missed.">                    !toDateRecord.toLocalDate().isBefore(toDateTimeMeeting.toLocalDate());</span>
+
+<span class="nc bnc" id="L251" title="All 2 branches missed.">            if (dateOverlap) {</span>
+<span class="nc bnc" id="L252" title="All 2 branches missed.">                if (isAllDay ||</span>
+<span class="nc bnc" id="L253" title="All 2 branches missed.">                        (fromDateRecord.toLocalTime().equals(LocalTime.MIDNIGHT) &amp;&amp;</span>
+<span class="nc bnc" id="L254" title="All 2 branches missed.">                                toDateRecord.toLocalTime().equals(LocalTime.MIDNIGHT))) {</span>
+<span class="nc" id="L255">                    hasOverlap = true;</span>
+                } else {
+<span class="nc bnc" id="L257" title="All 2 branches missed.">                    hasOverlap = fromDateRecord.toLocalTime().isBefore(toDateTimeMeeting.toLocalTime()) &amp;&amp;</span>
+<span class="nc bnc" id="L258" title="All 2 branches missed.">                            toDateRecord.toLocalTime().isAfter(fromDateTimeMeeting.toLocalTime());</span>
+                }
+            }
+        }
+<span class="nc" id="L262">        return hasOverlap;</span>
+    }
+
+    private void updateOrAddCandidate(
+            List&lt;CandidateToMeetinDTO&gt; userCandidates,
+            CandidateToMeetinDTO candidate,
+            boolean hasOverlap) {
+
+<span class="nc" id="L270">        CandidateToMeetinDTO existingUser = userCandidates.stream()</span>
+<span class="nc" id="L271">                .filter(c -&gt; c.getId().equals(candidate.getId()))</span>
+<span class="nc" id="L272">                .findFirst()</span>
+<span class="nc" id="L273">                .orElse(null);</span>
+
+<span class="nc bnc" id="L275" title="All 2 branches missed.">        if (existingUser != null) {</span>
+<span class="nc bnc" id="L276" title="All 2 branches missed.">            if (hasOverlap) {</span>
+<span class="nc" id="L277">                existingUser.setHasAbsences(true);</span>
+            }
+        } else {
+<span class="nc" id="L280">            candidate.setHasAbsences(hasOverlap);</span>
+<span class="nc" id="L281">            userCandidates.add(candidate);</span>
+        }
+<span class="nc" id="L283">    }</span>
+
+    public boolean hasOpenedMeetings(Long userId) {
+<span class="nc bnc" id="L286" title="All 2 branches missed.">        return meetingAttendanceRepository.countOpenedMeetings(userId) &gt; 0;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

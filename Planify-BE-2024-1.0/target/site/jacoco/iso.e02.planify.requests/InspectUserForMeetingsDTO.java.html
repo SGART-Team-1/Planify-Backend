@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>InspectUserForMeetingsDTO.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">planify</a> &gt; <a href="index.source.html" class="el_package">iso.e02.planify.requests</a> &gt; <span class="el_source">InspectUserForMeetingsDTO.java</span></div><h1>InspectUserForMeetingsDTO.java</h1><pre class="source lang-java linenums">package iso.e02.planify.requests;
+import iso.e02.planify.entities.MeetingAttendance.Role;
+import iso.e02.planify.entities.MeetingAttendance.InvitationStatus;
+
+
+public class InspectUserForMeetingsDTO {
+    private Long id;
+    private String name;
+    private String surnames;
+    private String email;
+    private Role role; // Incluye el rol
+    private InvitationStatus invitationStatus;
+    private boolean hasAssisted;
+    private byte[] photo; // Incluye la foto
+
+
+
+    // Constructor
+<span class="nc" id="L19">    public InspectUserForMeetingsDTO(Long id, String name, String surnames, String email, Role role, InvitationStatus invitationStatus, boolean hasAssisted) {</span>
+<span class="nc" id="L20">        this.id = id;</span>
+<span class="nc" id="L21">        this.name = name;</span>
+<span class="nc" id="L22">        this.surnames = surnames;</span>
+<span class="nc" id="L23">        this.email = email;</span>
+<span class="nc" id="L24">        this.role = role;</span>
+<span class="nc" id="L25">        this.invitationStatus = invitationStatus;</span>
+<span class="nc" id="L26">        this.hasAssisted = hasAssisted;</span>
+<span class="nc" id="L27">    }</span>
+
+    // Constructor for the query para obtener el organizador
+<span class="nc" id="L30">    public InspectUserForMeetingsDTO(Long id, String name, String surnames, byte[] photo) {</span>
+<span class="nc" id="L31">        this.id = id;</span>
+<span class="nc" id="L32">        this.name = name;</span>
+<span class="nc" id="L33">        this.surnames = surnames;</span>
+<span class="nc" id="L34">        this.photo = photo; // Assuming photo is stored in the email field for this query</span>
+<span class="nc" id="L35">    }</span>
+
+    // Getters and setters
+    public Long getId() {
+<span class="nc" id="L39">        return id;</span>
+    }
+
+    public void setId(Long id) {
+<span class="nc" id="L43">        this.id = id;</span>
+<span class="nc" id="L44">    }</span>
+
+    public String getName() {
+<span class="nc" id="L47">        return name;</span>
+    }
+
+    public void setName(String name) {
+<span class="nc" id="L51">        this.name = name;</span>
+<span class="nc" id="L52">    }</span>
+
+    public String getSurnames() {
+<span class="nc" id="L55">        return surnames;</span>
+    }
+
+    public void setSurnames(String surnames) {
+<span class="nc" id="L59">        this.surnames = surnames;</span>
+<span class="nc" id="L60">    }</span>
+
+    public String getEmail() {
+<span class="nc" id="L63">        return email;</span>
+    }
+
+    public void setEmail(String email) {
+<span class="nc" id="L67">        this.email = email;</span>
+<span class="nc" id="L68">    }</span>
+
+    public Role getRole() {
+<span class="nc" id="L71">        return role;</span>
+    }
+
+    public void setRole(Role role) {
+<span class="nc" id="L75">        this.role = role;</span>
+<span class="nc" id="L76">    }</span>
+
+    public InvitationStatus getInvitationStatus() {
+<span class="nc" id="L79">        return invitationStatus;</span>
+    }
+
+    public void setInvitationStatus(InvitationStatus invitationStatus) {
+<span class="nc" id="L83">        this.invitationStatus = invitationStatus;</span>
+<span class="nc" id="L84">    }</span>
+
+    public boolean isHasAssisted() {
+<span class="nc" id="L87">        return hasAssisted;</span>
+    }
+
+    public void setHasAssisted(boolean hasAssisted) {
+<span class="nc" id="L91">        this.hasAssisted = hasAssisted;</span>
+<span class="nc" id="L92">    }</span>
+
+    public byte[] getPhoto() {
+<span class="nc" id="L95">        return photo;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
